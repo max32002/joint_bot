@@ -16,7 +16,7 @@ import os
 import sys
 import json
 
-app_version = u"MaxRegBot (2019.09.16)"
+app_version = "MaxRegBot (2019.10.05)"
 
 homepage_default = u"慈濟首頁 http://www.tzuchi.com.tw/zh/"
 homepage_list = (homepage_default

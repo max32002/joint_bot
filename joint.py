@@ -34,17 +34,11 @@ import logging
 logging.basicConfig()
 logger = logging.getLogger('logger')
 
-#USER_INFO_ID = u"H122354621"
-#USER_INFO_ID = u"D200462346"
-
-#USER_INFO_TEL = u"0972123456"
-#USER_INFO_TEL = u"0917256958"
-
 #DR_NAME = u"尹文耀"
 #DR_NAME = u"呂紹睿"
 #DR_NAME = u"林志明"   # 整形外科
 
-app_version = "MaxRegBot (2019.09.16)"
+app_version = "MaxRegBot (2019.10.05)"
 
 homepage_default = u"http://www.tzuchi.com.tw/home/index.php/2017-04-20-06-51-46/2017-04-20-06-52-41"
 
@@ -245,7 +239,8 @@ def tzuchi_reg(url):
 
 
     # step 3: reg
-    if "app.tzuchi.com.tw/tchw/opdreg/RegNo.aspx" in url:
+    # app.tzuchi.com.tw/tchw/opdreg/RegNo.aspx
+    if "/RegNo.aspx" in url:
         is_fill_text_by_app = False
 
         el_radio = None
