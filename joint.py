@@ -38,7 +38,7 @@ logger = logging.getLogger('logger')
 #DR_NAME = u"呂紹睿"
 #DR_NAME = u"林志明"   # 整形外科
 
-app_version = "MaxRegBot (2019.10.05)"
+app_version = "MaxRegBot (2019.10.23)"
 
 homepage_default = u"http://www.tzuchi.com.tw/home/index.php/2017-04-20-06-51-46/2017-04-20-06-52-41"
 
@@ -99,7 +99,8 @@ if not config_dict is None:
 
     Root_Dir = ""
     if browser == "chrome":
-        chrome_options = None
+        chrome_options = webdriver.ChromeOptions()
+
         # default os is linux/mac
         chromedriver_path =Root_Dir+ "webdriver/chromedriver"
         if platform.system()=="windows":
@@ -108,7 +109,6 @@ if not config_dict is None:
         #extension_path = Root_Dir + "webdriver/Alert_Control.crx"
         #extension_file_exist = os.path.isfile(extension_path)
 
-        chrome_options = webdriver.ChromeOptions()
         #if extension_file_exist:
             #chrome_options.add_extension(extension_path)
         #else:
@@ -121,7 +121,6 @@ if not config_dict is None:
         
         #caps["unhandledPromptBehavior"] = u"dismiss and notify"  #  default
         caps["unhandledPromptBehavior"] = u"ignore"
-
 
         driver = webdriver.Chrome(options=chrome_options, executable_path=chromedriver_path, desired_capabilities=caps)
 
@@ -144,6 +143,15 @@ if not config_dict is None:
             homepage_url = homepage[target_index:]
 
     if len(homepage_url) > 0:
+        try:
+            window_handles_count = len(driver.window_handles)
+            if window_handles_count >= 1:
+                driver.switch_to.window(driver.window_handles[1])
+                driver.close()
+                driver.switch_to.window(driver.window_handles[0])
+        except Exception as excSwithFail:
+            pass
+
         driver.get(homepage_url)
         print("after homepage:", homepage_url)
 else:
