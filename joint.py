@@ -38,7 +38,7 @@ logger = logging.getLogger('logger')
 #DR_NAME = u"呂紹睿"
 #DR_NAME = u"林志明"   # 整形外科
 
-app_version = "MaxRegBot (2019.11.22)"
+app_version = "MaxRegBot (2019.12.10)"
 
 homepage_default = u"http://www.tzuchi.com.tw/home/index.php/2017-04-20-06-51-46/2017-04-20-06-52-41"
 
@@ -99,7 +99,62 @@ if not config_dict is None:
 
     Root_Dir = ""
     if browser == "chrome":
+
+        DEFAULT_ARGS = [
+            '--disable-audio-output',
+            '--disable-background-networking',
+            '--disable-background-timer-throttling',
+            '--disable-breakpad',
+            '--disable-browser-side-navigation',
+            '--disable-checker-imaging', 
+            '--disable-client-side-phishing-detection',
+            '--disable-default-apps',
+            '--disable-demo-mode', 
+            '--disable-dev-shm-usage',
+            #'--disable-extensions',
+            '--disable-features=site-per-process',
+            '--disable-hang-monitor',
+            '--disable-in-process-stack-traces', 
+            '--disable-javascript-harmony-shipping', 
+            '--disable-logging', 
+            '--disable-notifications', 
+            '--disable-popup-blocking',
+            '--disable-prompt-on-repost',
+            '--disable-perfetto',
+            '--disable-permissions-api', 
+            '--disable-plugins',
+            '--disable-presentation-api',
+            '--disable-reading-from-canvas', 
+            '--disable-renderer-accessibility', 
+            '--disable-renderer-backgrounding', 
+            '--disable-shader-name-hashing', 
+            '--disable-smooth-scrolling',
+            '--disable-speech-api',
+            '--disable-speech-synthesis-api',
+            '--disable-sync',
+            '--disable-translate',
+
+            '--metrics-recording-only',
+            '--no-first-run',
+            '--no-experiments',
+            '--safebrowsing-disable-auto-update',
+            #'--enable-automation',
+            '--password-store=basic',
+            '--use-mock-keychain',
+            '--lang=zh-TW',
+            '--stable-release-mode',
+            '--use-mobile-user-agent', 
+            '--webview-disable-safebrowsing-support', 
+            #'--no-sandbox',
+            #'--incognito',
+        ]
+
         chrome_options = webdriver.ChromeOptions()
+
+        # for navigator.webdriver
+        chrome_options.add_experimental_option("excludeSwitches", ['enable-automation'])
+        chrome_options.add_experimental_option('useAutomationExtension', False)
+        chrome_options.add_experimental_option("prefs", {"profile.password_manager_enabled": False, "credentials_enable_service": False,'profile.default_content_setting_values':{'notifications':2}})
 
         # default os is linux/mac
         chromedriver_path =Root_Dir+ "webdriver/chromedriver"
@@ -114,15 +169,19 @@ if not config_dict is None:
         #else:
             #print("extention not exist")
 
-        caps = DesiredCapabilities().CHROME
+        #caps = DesiredCapabilities().CHROME
+        caps = chrome_options.to_capabilities()
+
         #caps["pageLoadStrategy"] = u"normal"  #  complete
         caps["pageLoadStrategy"] = u"eager"  #  interactive
         #caps["pageLoadStrategy"] = u"none"
         
         #caps["unhandledPromptBehavior"] = u"dismiss and notify"  #  default
         caps["unhandledPromptBehavior"] = u"ignore"
+        #caps["unhandledPromptBehavior"] = u"dismiss"
 
-        driver = webdriver.Chrome(options=chrome_options, executable_path=chromedriver_path, desired_capabilities=caps)
+        #driver = webdriver.Chrome(options=chrome_options, executable_path=chromedriver_path, desired_capabilities=caps)
+        driver = webdriver.Chrome(desired_capabilities=caps, executable_path=chromedriver_path)
 
     if browser == "firefox":
         # default os is linux/mac
@@ -452,11 +511,6 @@ def main():
                     pass
                     #print('*crickets*')
         
-        except MaxRetryError as exc:
-            logger.error('Hello2 MaxRetryError')
-            close_popup_alert()
-            logger.error('Hello2 after close alert')
-
         except Exception as exc:
             logger.error('Exception')
             logger.error(exc, exc_info=True)
@@ -471,26 +525,26 @@ def main():
             if len(str_exc)==0:
                 str_exc = repr(exc)
             
-            str_chrome_not_reachable = u'chrome not reachable'
-            
-            # for python2
-            try:
-                basestring
-                if isinstance(str_chrome_not_reachable, unicode):
-                    str_chrome_not_reachable = str(str_chrome_not_reachable)
-            except NameError:  # Python 3.x
-                basestring = str
+            exit_bot_error_strings = [u'Max retries exceeded with url', u'chrome not reachable']
+            for str_chrome_not_reachable in exit_bot_error_strings:
+                # for python2
+                try:
+                    basestring
+                    if isinstance(str_chrome_not_reachable, unicode):
+                        str_chrome_not_reachable = str(str_chrome_not_reachable)
+                except NameError:  # Python 3.x
+                    basestring = str
 
-            if isinstance(str_exc, str):
-                if str_chrome_not_reachable in str_exc:
-                    print(u'quit bot')
-                    driver.quit()
-                    import sys
-                    sys.exit()
+                if isinstance(str_exc, str):
+                    if str_chrome_not_reachable in str_exc:
+                        print(u'quit bot')
+                        driver.quit()
+                        import sys
+                        sys.exit()
 
             print("exc", str_exc)
             pass
-
+            
         if url is None:
             continue
         else:
