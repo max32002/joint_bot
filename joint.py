@@ -38,7 +38,7 @@ logger = logging.getLogger('logger')
 #DR_NAME = u"呂紹睿"
 #DR_NAME = u"林志明"   # 整形外科
 
-app_version = "MaxRegBot (2019.12.10)"
+app_version = "MaxRegBot (2020.02.17)"
 
 homepage_default = u"http://www.tzuchi.com.tw/home/index.php/2017-04-20-06-51-46/2017-04-20-06-52-41"
 
@@ -133,6 +133,8 @@ if not config_dict is None:
             '--disable-speech-synthesis-api',
             '--disable-sync',
             '--disable-translate',
+
+            '--ignore-certificate-errors',
 
             '--metrics-recording-only',
             '--no-first-run',
