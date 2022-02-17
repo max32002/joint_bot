@@ -16,7 +16,7 @@ import os
 import sys
 import json
 
-app_version = "MaxRegBot (2020.02.17)"
+app_version = "MaxRegBot (2022.02.17)"
 
 homepage_default = u"慈濟首頁 http://www.tzuchi.com.tw/zh/"
 homepage_list = (homepage_default
@@ -114,6 +114,7 @@ def btn_run_clicked():
     if btn_save_act(slience_mode=True):
         import subprocess
         if hasattr(sys, 'frozen'):
+            print("execute in frozen mode")
             import platform
 
             # check platform here.
@@ -123,7 +124,22 @@ def btn_run_clicked():
             if platform.system() == 'Windows':
                 subprocess.Popen("joint.exe", shell=True)
         else:
-            subprocess.Popen("python joint.py", shell=True)
+            #print("execute in shell mode")
+            working_dir = os.path.dirname(os.path.realpath(__file__))
+            #print("script path:", working_dir)
+            #messagebox.showinfo(title="Debug0", message=working_dir)
+            try:
+                s=subprocess.Popen(['python3', 'joint.py'], cwd=working_dir)
+                #s=subprocess.Popen(['./chrome_tixcraft'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=working_dir)
+                #s=subprocess.run(['python3', 'chrome_tixcraft.py'], cwd=working_dir)
+                #messagebox.showinfo(title="Debug1", message=str(s))
+            except Exception as exc:
+                try:
+                    s=subprocess.Popen(['python', 'joint.py'], cwd=working_dir)
+                except Exception as exc:
+                    msg=str(exc)
+                    messagebox.showinfo(title="Debug2", message=msg)
+                    pass
 
 
 def btn_exit_clicked():
