@@ -45,7 +45,7 @@ logger = logging.getLogger('logger')
 #DR_NAME = u"呂紹睿"
 #DR_NAME = u"林志明"   # 整形外科
 
-app_version = "MaxRegBot (2022.02.17)"
+app_version = "MaxRegBot (2022.05.06)"
 
 homepage_default = u"http://www.tzuchi.com.tw/home/index.php/2017-04-20-06-51-46/2017-04-20-06-52-41"
 
@@ -56,7 +56,11 @@ driver = None
 homepage = ""
 browser = "chrome"
 user_id = ""
+user_name = ""
 user_tel = ""
+user_birthday = ""
+user_gender = ""
+visit_time = ""
 dr_name = ""
 
 enable_captcha_ocr = False
@@ -92,7 +96,11 @@ def load_config_from_local(driver):
     global browser
 
     global user_id
+    global user_name
     global user_tel
+    global user_birthday
+    global user_gender
+    global visit_time
     global dr_name
 
     global debugMode
@@ -105,8 +113,20 @@ def load_config_from_local(driver):
         if 'user_id' in config_dict:
             user_id = config_dict["user_id"]
 
+        if 'user_name' in config_dict:
+            user_name = config_dict["user_name"]
+
         if 'user_tel' in config_dict:
             user_tel = config_dict["user_tel"]
+
+        if 'user_birthday' in config_dict:
+            user_birthday = config_dict["user_birthday"]
+
+        if 'user_gender' in config_dict:
+            user_gender = config_dict["user_gender"]
+
+        if 'visit_time' in config_dict:
+            visit_time = config_dict["visit_time"]
 
         if 'dr_name' in config_dict:
             dr_name = config_dict["dr_name"]
@@ -115,7 +135,11 @@ def load_config_from_local(driver):
         print("version", app_version)
         print("homepage", homepage)
         print("user_id", user_id)
+        print("user_name", user_name)
         print("user_tel", user_tel)
+        print("user_birthday", user_birthday)
+        print("user_gender", user_gender)
+        print("visit_time", visit_time)
         print("dr_name", dr_name)
         
         print("debugMode", debugMode)
@@ -255,6 +279,295 @@ def load_config_from_local(driver):
 
     return driver
 
+# start to find dr name.
+def tzuchi_OpdTimeShow(driver):
+    ret = True
+
+    is_dr_name_found = False
+
+    el = None
+    try:
+        el = driver.find_element(By.ID, 'example')
+    except Exception as exc:
+        print("find #example fail, try to get all hyperlink")
+        # try to find all.
+        el = driver.find_element(By.TAG_NAME, 'body')
+
+    el_reg_all = None
+    if el is not None:
+        #print("found example table")
+        #example > tbody > tr:nth-child(24) > td:nth-child(2) > a:nth-child(4)
+        try:
+            el_reg_all = el.find_elements(By.TAG_NAME, 'a')
+        except Exception as exc:
+            print("find DR_NAME a hyperlink fail")
+
+    if el_reg_all is not None:
+        total_count = len(el_reg_all)
+        for idx in range(total_count):
+            # avoid over flow.
+            target_index = (total_count-1)-idx
+            if target_index < 0:
+                target_index = 0
+            if target_index > (total_count-1):
+                target_index = (total_count-1)
+            el_reg = el_reg_all[target_index]
+
+            if not el_reg is None: 
+                hyerlink_text = None
+                try:
+                    hyerlink_text = el_reg.text
+                except Exception as exc:
+                    #print(exc)
+                    pass
+
+                #print("idx:", idx, "text:", hyerlink_text)
+                #print("I found hyerlink table:" + hyerlink_text)
+                if not hyerlink_text is None:
+                    try:
+                        if dr_name in hyerlink_text:
+                            is_dr_name_found = True
+                    except Exception as exc:
+                        print(exc)
+
+                    if is_dr_name_found:
+                        try:
+                            el_reg.click()
+                        except Exception as exc:
+                            print(exc)
+            
+            if is_dr_name_found:
+                break
+
+    if not is_dr_name_found:
+        # force reload!
+        try:
+            # this may cause fail!
+            #print("refresh page")
+            driver.refresh()
+        except Exception as exc:
+            #print("refresh fail")
+            pass
+        ret = False
+
+    return ret
+
+def tzuchi_RegNo(driver):
+    is_fill_text_by_app = False
+
+    print("check 初診.")
+    # for "first time"
+    # 初診/複診
+
+    visit_time_html_id = 'MainContent_rblRegFM_1'
+    if visit_time == '初診':
+        visit_time_html_id = 'MainContent_rblRegFM_0'
+
+    el_radio = None
+    try:
+        # direct user version 2:
+        el_radio = driver.find_element(By.ID, visit_time_html_id)
+    except Exception as exc:
+        pass
+        #print("find #visit_time_html_id fail")
+
+    if el_radio is not None:
+        try:
+            if not el_radio.is_selected():
+                el_radio.click()
+        except Exception as exc:
+            print("click MainContent_rblRegFM_0 radio fail")
+
+    # for User Gender
+    # 男/女 
+
+    user_gender_html_id = 'MainContent_rtbSexType_0'
+    if user_gender == '女':
+        user_gender_html_id = 'MainContent_rtbSexType_1'
+
+    el_radio = None
+    try:
+        # direct user version 2:
+        el_radio = driver.find_element(By.ID, user_gender_html_id)
+    except Exception as exc:
+        pass
+        #print("find #user_gender_html_id fail")
+
+    if el_radio is not None:
+        try:
+            if not el_radio.is_selected():
+                el_radio.click()
+        except Exception as exc:
+            print("click user_gender_html_id radio fail")
+
+    # for "ID type"
+    el_radio = None
+    try:
+        # version 1:
+        el_radio = driver.find_element(By.ID, 'rblRegFM_0')
+    except Exception as exc:
+        print("find #rblRegFM_0 fail")
+        # version 2:
+        try:
+            el_radio = driver.find_element(By.ID, 'MainContent_IdSelectType2_0')
+        except Exception as exc:
+            pass
+            #print("find #MainContent_IdSelectType2_0 fail")
+
+    if el_radio is not None:
+        try:
+            if not el_radio.is_selected():
+                el_radio.click()
+        except Exception as exc:
+            print("click MainContent_IdSelectType2_0 radio fail")
+
+    # for "ID type" case 2.
+    # when 初診, id name is different.
+    
+    el_radio = None
+    try:
+        # version 2:
+        el_radio = driver.find_element(By.ID, 'MainContent_IdSelectType1_0')
+    except Exception as exc:
+        pass
+        #222print("find #MainContent_IdSelectType1_0 fail")
+
+    if el_radio is not None:
+        try:
+            if not el_radio.is_selected():
+                el_radio.click()
+        except Exception as exc:
+            print("click MainContent_IdSelectType1_0 radio fail")
+
+
+    el_text_id = None
+    try:
+        el_text_id = driver.find_element(By.ID, 'txtMRNo')
+    except Exception as exc:
+        print("find #txtMRNo fail")
+        
+        # version 2:
+        try:
+            el_text_id = driver.find_element(By.ID, 'MainContent_tbxMRNo')
+        except Exception as exc:
+            print("find #MainContent_tbxMRNo fail")
+
+    if el_text_id is not None:
+        try:
+            text_id_value = str(el_text_id.get_attribute('value'))
+            if text_id_value == "":
+                #el_text_id.click()
+                print("try to send keys")
+                el_text_id.send_keys(user_id)
+                is_fill_text_by_app = True
+        except Exception as exc:
+            print("send user_id fail")
+
+    # user name
+    el_text_name = None
+    try:
+        # direct, version 2:
+        el_text_name = driver.find_element(By.ID, 'MainContent_tbxName')
+    except Exception as exc:
+        pass
+        #print("find #MainContent_tbxName fail")
+
+    if el_text_name is not None:
+        print("found MainContent_tbxName")
+        try:
+            text_name_value = str(el_text_name.get_attribute('value'))
+            if text_name_value == "":
+                print("try to send keys:", user_name)
+                el_text_name.send_keys(user_name)
+                is_fill_text_by_app = True
+            else:
+                pass
+                print("text not empty, value:", text_name_value)
+        except Exception as exc:
+            print("sned MainContent_tbxName fail")
+
+
+    # tel
+    el_text_tel = None
+    try:
+        el_text_tel = driver.find_element(By.ID, 'txtTel')
+    except Exception as exc:
+        pass
+        #print("find #txtTel fail")
+
+        # version 2:
+        try:
+            el_text_tel = driver.find_element(By.ID, 'MainContent_tbxTel')
+        except Exception as exc:
+            pass
+            #print("find #MainContent_tbxTel fail")
+
+    if el_text_tel is not None:
+        try:
+            text_tel_value = str(el_text_tel.get_attribute('value'))
+            if text_tel_value == "":
+                #el_text_tel.click()
+                print("try to send keys")
+                el_text_tel.send_keys(user_tel)
+                is_fill_text_by_app = True
+        except Exception as exc:
+            print("sned user_tel fail")
+
+
+    # birthday
+    el_text_birthday = None
+    try:
+        # direct, version 2:
+        el_text_birthday = driver.find_element(By.ID, 'MainContent_tbxBirthday')
+    except Exception as exc:
+        pass
+        #print("find #MainContent_tbxBirthday fail")
+
+    if el_text_birthday is not None:
+        try:
+            text_birthday_value = str(el_text_birthday.get_attribute('value'))
+            if text_birthday_value == "":
+                #el_text_tel.click()
+                print("try to send keys")
+                el_text_birthday.send_keys(user_birthday)
+                is_fill_text_by_app = True
+        except Exception as exc:
+            print("sned MainContent_tbxBirthday fail")
+
+
+    #print("is_fill_text_by_app",is_fill_text_by_app)
+    if is_fill_text_by_app:
+        el_text_captcha = None
+        try:
+            # direct, version 1:
+            el_text_captcha = driver.find_element(By.ID, 'txtVCode')
+        except Exception as exc:
+            print("find #txtVCode fail")
+            # direct, version 2:
+            try:
+                el_text_captcha = driver.find_element(By.ID, 'MainContent_tbxVCode')
+            except Exception as exc:
+                print("find #MainContent_tbxVCode fail")
+
+        if el_text_captcha is not None:
+            try:
+                el_text_captcha.click()
+            except Exception as exc:
+                print("focus el_text_captcha fail")
+
+        if enable_captcha_ocr:
+            img_captcha = None
+            try:
+                img_captcha = driver.find_element(By.ID, 'imgVI')
+            except Exception as exc:
+                print("find #imgVI fail")
+
+            if img_captcha is not None:
+                try:
+                    img_captcha.screenshot('captcha.png')
+                except Exception as exc:
+                    print("focus el_text_captcha fail")
+
 def tzuchi_reg(url, driver):
     #print("tzuchi_reg")
     ret = True
@@ -264,155 +577,24 @@ def tzuchi_reg(url, driver):
         pass
 
     # step 2: get the first hyperlink.
-    if "/OpdTimeShow.aspx" in url:
-        is_dr_name_found = False
-
-        el = None
-        try:
-            el = driver.find_element(By.ID, 'example')
-        except Exception as exc:
-            print("find #example fail")
-
-        el_reg_all = None
-        if el is not None:
-            #print("found example table")
-            #example > tbody > tr:nth-child(24) > td:nth-child(2) > a:nth-child(4)
-            try:
-                el_reg_all = el.find_elements(By.TAG_NAME, 'a')
-            except Exception as exc:
-                print("find DR_NAME a hyperlink fail")
-
-
-        if el_reg_all is not None:
-            total_count = len(el_reg_all)
-            for idx in range(total_count):
-                # avoid over flow.
-                target_index = (total_count-1)-idx
-                if target_index < 0:
-                    target_index = 0
-                if target_index > (total_count-1):
-                    target_index = (total_count-1)
-                el_reg = el_reg_all[target_index]
-
-                if not el_reg is None: 
-                    hyerlink_text = None
-                    try:
-                        hyerlink_text = el_reg.text
-                    except Exception as exc:
-                        #print(exc)
-                        pass
-
-                    #print("idx:", idx, "text:", hyerlink_text)
-                    #print("I found hyerlink table:" + hyerlink_text)
-                    if not hyerlink_text is None:
-                        try:
-                            if dr_name in hyerlink_text:
-                                is_dr_name_found = True
-                        except Exception as exc:
-                            print(exc)
-
-                        if is_dr_name_found:
-                            try:
-                                el_reg.click()
-                            except Exception as exc:
-                                print(exc)
-                
-                if is_dr_name_found:
-                    break
-
-
-        if not is_dr_name_found:
-            # force reload!
-            try:
-                # this may cause fail!
-                #print("refresh page")
-                driver.refresh()
-            except Exception as exc:
-                #print("refresh fail")
-                pass
-            
-            ret = False
-
+    is_match_dr_page_url = False
+    dr_page_list = ['/OpdTimeShow.aspx', '/OpdTimeShow?']
+    for each_page in dr_page_list:
+        #print("each_page:", each_page)
+        if each_page in url:
+            is_match_dr_page_url = True
+            break
+    if is_match_dr_page_url:
+        #print("star to query dr name hyperlink")
+        ret = tzuchi_OpdTimeShow(driver)
 
     # step 3: reg
     # app.tzuchi.com.tw/tchw/opdreg/RegNo.aspx
-    if "/RegNo.aspx" in url:
-        is_fill_text_by_app = False
-
-        el_radio = None
-        try:
-            el_radio = driver.find_element(By.ID, 'rblRegFM_0')
-        except Exception as exc:
-            print("find #rblRegFM_0 fail")
-
-        if el_radio is not None:
-            try:
-                if not el_radio.is_selected():
-                    el_radio.click()
-            except Exception as exc:
-                print("click reg radio fail")
-
-        el_text_id = None
-        try:
-            el_text_id = driver.find_element(By.ID, 'txtMRNo')
-        except Exception as exc:
-            print("find #txtMRNo fail")
-
-        if el_text_id is not None:
-            try:
-                text_id_value = str(el_text_id.get_attribute('value'))
-                if text_id_value == "":
-                    #el_text_id.click()
-                    print("try to send keys")
-                    el_text_id.send_keys(user_id)
-                    is_fill_text_by_app = True
-            except Exception as exc:
-                print("send user_id fail")
-
-        el_text_tel = None
-        try:
-            el_text_tel = driver.find_element(By.ID, 'txtTel')
-        except Exception as exc:
-            print("find #txtTel fail")
-
-        if el_text_tel is not None:
-            try:
-                text_tel_value = str(el_text_tel.get_attribute('value'))
-                if text_tel_value == "":
-                    #el_text_tel.click()
-                    print("try to send keys")
-                    el_text_tel.send_keys(user_tel)
-                    is_fill_text_by_app = True
-            except Exception as exc:
-                print("sned user_tel fail")
-
-        #print("is_fill_text_by_app",is_fill_text_by_app)
-        if is_fill_text_by_app:
-            el_text_captcha = None
-            try:
-                el_text_captcha = driver.find_element(By.ID, 'txtVCode')
-            except Exception as exc:
-                print("find #txtVCode fail")
-
-            if el_text_captcha is not None:
-                try:
-                    el_text_captcha.click()
-                except Exception as exc:
-                    print("focus el_text_captcha fail")
-
-            
-            if enable_captcha_ocr:
-                img_captcha = None
-                try:
-                    img_captcha = driver.find_element(By.ID, 'imgVI')
-                except Exception as exc:
-                    print("find #imgVI fail")
-
-                if img_captcha is not None:
-                    try:
-                        img_captcha.screenshot('captcha.png')
-                    except Exception as exc:
-                        print("focus el_text_captcha fail")
+    reg_form_list = ['/RegNo.aspx', '/RegNo?']
+    for each_page in reg_form_list:
+        if each_page in url:
+            tzuchi_RegNo(driver)
+            break
 
     return ret
 
@@ -602,10 +784,13 @@ def main():
                 print(url)
             last_url = url
 
-        if 'tzuchi.com.tw' in url:
-            ret = tzuchi_reg(url, driver)
-            if ret == False:
-                #last_url = u"https://app.tzuchi.com.tw/tchw/opdreg/SecList_DL.aspx"
-                pass
+        # 
+        tzuchi_domain_list = ['tzuchi-healthcare.org.tw','tzuchi.com.tw']
+        for each_domain in tzuchi_domain_list:
+            if each_domain in url:
+                ret = tzuchi_reg(url, driver)
+                if ret == False:
+                    #last_url = u"https://app.tzuchi.com.tw/tchw/opdreg/SecList_DL.aspx"
+                    pass
 
 main()

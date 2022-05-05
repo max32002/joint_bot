@@ -16,7 +16,7 @@ import os
 import sys
 import json
 
-app_version = "MaxRegBot (2022.02.17)"
+app_version = "MaxRegBot (2022.05.06)"
 
 homepage_default = u"慈濟首頁 http://www.tzuchi.com.tw/zh/"
 homepage_list = (homepage_default
@@ -28,6 +28,12 @@ homepage_list = (homepage_default
     , u'大林慈濟 https://app.tzuchi.com.tw/tchw/OpdReg/SecList_DL.aspx'
     , u'斗六慈濟 https://app.tzuchi.com.tw/tchw/OpdReg/SecList_TL.aspx'
     )
+
+gender_default = '男'
+gender_list = (gender_default, '女')
+
+visit_time_default = '初診'
+visit_time_list = (visit_time_default, '複診')
 
 config_filepath = None
 config_dict = None
@@ -71,8 +77,12 @@ def btn_save_act(slience_mode=False):
         global combo_homepage
 
         global txt_user_id
+        global txt_user_name
         global txt_user_tel
         global txt_dr_name
+        global txt_user_birthday
+        global combo_user_gender
+        global combo_visit_time
 
         if is_all_data_correct:
             if combo_homepage.get().strip()=="":
@@ -89,11 +99,27 @@ def btn_save_act(slience_mode=False):
                 config_dict["user_id"] = txt_user_id.get().strip()
 
         if is_all_data_correct:
+            config_dict["user_name"] = txt_user_name.get().strip()
+            pass
+
+        if is_all_data_correct:
             if txt_user_tel.get().strip()=="":
                 is_all_data_correct = False
                 messagebox.showerror("Error", "Please enter user tel")
             else:
                 config_dict["user_tel"] = txt_user_tel.get().strip()
+
+        if is_all_data_correct:
+            config_dict["user_birthday"] = txt_user_birthday.get().strip()
+            pass
+
+        if is_all_data_correct:
+            config_dict["user_gender"] = combo_user_gender.get().strip()
+            pass
+
+        if is_all_data_correct:
+            config_dict["visit_time"] = combo_visit_time.get().strip()
+            pass
 
         if is_all_data_correct:
             config_dict["dr_name"] = txt_dr_name.get().strip()
@@ -145,15 +171,12 @@ def btn_run_clicked():
 def btn_exit_clicked():
     root.destroy()
 
+# PS: nothing need to do, at current process.
 def callbackHomepageOnChange(event):
     showHideBlocks()
 
 def showHideBlocks(all_layout_visible=False):
-    global UI_PADDING_X
-
-    new_homepage = combo_homepage.get().strip()
-    #print("new homepage value:", new_homepage)
-
+    pass
 
 def MainMenu(root):
     global UI_PADDING_X
@@ -163,12 +186,20 @@ def MainMenu(root):
 
     lbl_homepage = None
     lbl_user_id = None
+    lbl_user_name = None
     lbl_user_tel = None
+    lbl_user_birthday = None
+    lbl_user_gender = None
+    lbl_visit_time = None
     lbl_dr_name = None
 
     homepage = None
     user_id = ""
+    user_name = ""
     user_tel = ""
+    user_birthday = ""
+    user_gender = ""
+    visit_time = ""
     dr_name = ""
 
     global config_dict
@@ -180,8 +211,20 @@ def MainMenu(root):
         if u'user_id' in config_dict:
             user_id = config_dict[u"user_id"]
 
+        if u'user_name' in config_dict:
+            user_name = config_dict[u"user_name"]
+
         if u'user_tel' in config_dict:
             user_tel = config_dict[u"user_tel"]
+
+        if u'user_birthday' in config_dict:
+            user_birthday = config_dict[u"user_birthday"]
+
+        if u'user_gender' in config_dict:
+            user_gender = config_dict[u"user_gender"]
+
+        if u'visit_time' in config_dict:
+            visit_time = config_dict[u"visit_time"]
 
         if u'dr_name' in config_dict:
             dr_name = config_dict[u"dr_name"]
@@ -189,15 +232,27 @@ def MainMenu(root):
         # output config:
         print("homepage", homepage)
         print("user_id", user_id)
+        print("user_name", user_name)
         print("user_tel", user_tel)
+        print("user_birthday", user_birthday)
+        print("user_gender", user_gender)
+        print("visit_time", visit_time)
         print("dr_name", dr_name)
 
     else:
         print('config is none')
 
+    # load default values.
     if homepage is None:
         homepage = homepage_default
 
+    if user_gender == "":
+        user_gender = gender_default
+
+    if visit_time == "":
+        visit_time = visit_time_default
+
+    # output to GUI.
     row_count = 0
 
     frame_group_header = Frame(root)
@@ -211,6 +266,7 @@ def MainMenu(root):
     combo_homepage = ttk.Combobox(frame_group_header, state="readonly")
     combo_homepage['values']= homepage_list
     combo_homepage.set(homepage)
+    # PS: nothing need to do when on change event at this time.
     combo_homepage.bind("<<ComboboxSelected>>", callbackHomepageOnChange)
     combo_homepage.grid(column=1, row=group_row_count, sticky = W)
 
@@ -240,6 +296,18 @@ def MainMenu(root):
 
     group_row_count+=1
 
+    # User Name
+    lbl_user_name = Label(frame_group_header, text="User Name")
+    lbl_user_name.grid(column=0, row=group_row_count, sticky = E)
+
+    global txt_user_name
+    global txt_user_name_value
+    txt_user_name_value = StringVar(frame_group_header, value=user_name)
+    txt_user_name = Entry(frame_group_header, width=20, textvariable = txt_user_name_value)
+    txt_user_name.grid(column=1, row=group_row_count, sticky = W)
+
+    group_row_count+=1
+
     # User Tel
     lbl_user_tel = Label(frame_group_header, text="User Tel")
     lbl_user_tel.grid(column=0, row=group_row_count, sticky = E)
@@ -249,6 +317,46 @@ def MainMenu(root):
     txt_user_tel_value = StringVar(frame_group_header, value=user_tel)
     txt_user_tel = Entry(frame_group_header, width=20, textvariable = txt_user_tel_value)
     txt_user_tel.grid(column=1, row=group_row_count, sticky = W)
+
+    group_row_count+=1
+
+    # User Birthday
+    lbl_user_birthday = Label(frame_group_header, text="User Birthday")
+    lbl_user_birthday.grid(column=0, row=group_row_count, sticky = E)
+
+    global txt_user_birthday
+    global txt_user_birthday_value
+    txt_user_birthday_value = StringVar(frame_group_header, value=user_birthday)
+    txt_user_birthday = Entry(frame_group_header, width=20, textvariable = txt_user_birthday_value)
+    txt_user_birthday.grid(column=1, row=group_row_count, sticky = W)
+
+    group_row_count+=1
+
+    # User Gender
+    lbl_user_gender = Label(frame_group_header, text="User Gender")
+    lbl_user_gender.grid(column=0, row=group_row_count, sticky = E)
+
+    global combo_user_gender
+    combo_user_gender = ttk.Combobox(frame_group_header, state="readonly")
+    combo_user_gender['values']= gender_list
+    combo_user_gender.set(user_gender)
+    # PS: nothing need to do when on change event at this time.
+    combo_user_gender.bind("<<ComboboxSelected>>", callbackHomepageOnChange)
+    combo_user_gender.grid(column=1, row=group_row_count, sticky = W)
+
+    group_row_count+=1
+
+    # Visit Time
+    lbl_visit_time = Label(frame_group_header, text="Visit Time")
+    lbl_visit_time.grid(column=0, row=group_row_count, sticky = E)
+
+    global combo_visit_time
+    combo_visit_time = ttk.Combobox(frame_group_header, state="readonly")
+    combo_visit_time['values']= visit_time_list
+    combo_visit_time.set(visit_time)
+    # PS: nothing need to do when on change event at this time.
+    combo_visit_time.bind("<<ComboboxSelected>>", callbackHomepageOnChange)
+    combo_visit_time.grid(column=1, row=group_row_count, sticky = W)
 
     group_row_count+=1
 
@@ -292,7 +400,7 @@ def main():
 
     GUI = MainMenu(root)
     GUI_SIZE_WIDTH = 420
-    GUI_SIZE_HEIGHT = 200
+    GUI_SIZE_HEIGHT = 310
     GUI_SIZE_MACOS = str(GUI_SIZE_WIDTH) + 'x' + str(GUI_SIZE_HEIGHT)
     GUI_SIZE_WINDOWS=str(GUI_SIZE_WIDTH-60) + 'x' + str(GUI_SIZE_HEIGHT-20)
 
