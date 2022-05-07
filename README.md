@@ -5,7 +5,9 @@ MaxRegBot(Max掛號機器人) help you quickly make your registration online
 https://github.com/max32002/joint_bot/releases
 
 # Demo (示範影片)
-https://youtu.be/bpuI2m-L7X0
+
+* 2022-02-17 示範影片：https://youtu.be/bpuI2m-L7X0
+* 2022-05-06 示範影片：https://youtu.be/QRLAFMY4yJY
 
 # How to use (如何使用)
 https://max-everyday.com/2018/08/max-auto-reg-bot/
