@@ -1,13 +1,16 @@
-# joint_bot
-MaxRegBot(Max掛號機器人) help you quickly make your registration online
+# Max掛號機器人
+MaxRegBot是一個免費、開放原始碼的掛號機器人。祝您掛號成功。
+
+MaxRegBot help you quickly make your registration online
 
 # Download (應用程式下載)
 https://github.com/max32002/joint_bot/releases
 
 # Demo (示範影片)
 
-* 2022-02-17 示範影片：https://youtu.be/bpuI2m-L7X0
-* 2022-05-06 示範影片：https://youtu.be/QRLAFMY4yJY
+* 2023-02-19：https://youtu.be/RwXAOIhXA9I (支援驗證碼自動輸入)
+* 2022-02-17：https://youtu.be/bpuI2m-L7X0
+* 2022-05-06：https://youtu.be/QRLAFMY4yJY
 
 # How to use (如何使用)
 https://max-everyday.com/2018/08/max-auto-reg-bot/
@@ -47,6 +50,27 @@ please run this source code with high performance hardware computer and high spe
 * joint_xxxxxx.zip ： Windows 版執行檔。
 
 
+# Introduce the implement (實作方法)
+
+https://stackoverflow.max-everyday.com/2018/03/selenium-chrome-webdriver/
+
+# TODO about cpatcha (關於驗證碼)
+
+目前自動輸入驗證碼用的元件是:
+
+https://github.com/sml2h3/ddddocr
+
+附註：
+* macOS 新的電腦 arm 系列, 暫時沒有提供自動輸入驗證碼功能, 使用上的限制和 ddddocr 相同. 
+* macOS 舊款intel CPU 的電腦裡的 python 版本要降到低於等於 3.9 版, 例如: https://www.python.org/ftp/python/3.9.13/python-3.9.13-macosx10.9.pkg .
+* 猜測驗證碼時比較容易出錯的是字英 f 和 t，還有 q 和 g, v 和 u 還有 w.
+* 猜測驗證碼必錯的情況是，目前不允許有重覆的2個字母出來。
+
+
+想自動輸入驗證碼，可以參考看看：實作基於CNN的台鐵訂票驗證碼辨識以及透過模仿及資料增強的訓練集產生器 (Simple captcha solver based on CNN and a training set generator by imitating the style of captcha and data augmentation)
+
+https://github.com/JasonLiTW/simple-railway-captcha-solver
+
 # Donate (贊助Max)
 
-如果你覺得這篇文章或MaxBot寫的很好，想打賞Max，贊助方式如下： https://max-everyday.com/about/#donate
+如果你覺得這篇文章或MaxRegBot寫的很好，想打賞Max，贊助方式如下： https://max-everyday.com/about/#donate
