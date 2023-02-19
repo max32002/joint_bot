@@ -4,28 +4,22 @@ import os
 import sys
 import platform
 import json
-import random
 
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import Select
-
 # for close tab.
 from selenium.common.exceptions import NoSuchWindowException
-# for alert
 from selenium.common.exceptions import UnexpectedAlertPresentException
 from selenium.common.exceptions import NoAlertPresentException
+from selenium.common.exceptions import WebDriverException
 # for alert 2
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
-
-# for ["pageLoadStrategy"] = "eager"
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 # for selenium 4
 from selenium.webdriver.chrome.service import Service
-
+from selenium.webdriver.common.action_chains import ActionChains
 # for wait #1
 import time
 
@@ -33,40 +27,27 @@ import warnings
 from urllib3.exceptions import InsecureRequestWarning
 warnings.simplefilter('ignore',InsecureRequestWarning)
 
+# ocr
+import base64
+try:
+    import ddddocr
+    #PS: python 3.11.1 raise PIL conflict.
+    from NonBrowser import NonBrowser
+except Exception as exc:
+    pass
+
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
 
-# for error output
-import logging
-logging.basicConfig()
-logger = logging.getLogger('logger')
 
-#DR_NAME = u"尹文耀"
-#DR_NAME = u"呂紹睿"
-#DR_NAME = u"林志明"   # 整形外科
+CONST_APP_VERSION = "MaxRegBot (2023.02.19)"
 
-app_version = "MaxRegBot (2022.05.06)"
+CONST_OCR_CAPTCH_IMAGE_SOURCE_NON_BROWSER = "NonBrowser"
+CONST_OCR_CAPTCH_IMAGE_SOURCE_CANVAS = "canvas"
 
-homepage_default = u"http://www.tzuchi.com.tw/home/index.php/2017-04-20-06-51-46/2017-04-20-06-52-41"
-
-# initial webdriver
-# 說明：初始化 webdriver
-driver = None
-
-homepage = ""
-browser = "chrome"
-user_id = ""
-user_name = ""
-user_tel = ""
-user_birthday = ""
-user_gender = ""
-visit_time = ""
-dr_name = ""
-
-enable_captcha_ocr = False
-#enable_captcha_ocr = True
-
-debugMode = False
+CONST_WEBDRIVER_TYPE_SELENIUM = "selenium"
+#CONST_WEBDRIVER_TYPE_STEALTH = "stealth"
+CONST_WEBDRIVER_TYPE_UC = "undetected_chromedriver"
 
 def get_app_root():
     # 讀取檔案裡的參數值
@@ -88,168 +69,291 @@ def get_config_dict():
             config_dict = json.load(json_data)
     return config_dict
 
-def load_config_from_local(driver):
-    config_dict = get_config_dict()
 
-    global homepage
-    global homepage_default
-    global browser
+def get_favoriate_extension_path(webdriver_path):
+    no_google_analytics_path = os.path.join(webdriver_path,"no_google_analytics_1.1.0.0.crx")
+    no_ad_path = os.path.join(webdriver_path,"Adblock_3.15.2.0.crx")
+    return no_google_analytics_path, no_ad_path
 
-    global user_id
-    global user_name
-    global user_tel
-    global user_birthday
-    global user_gender
-    global visit_time
-    global dr_name
+def get_chromedriver_path(webdriver_path):
+    chromedriver_path = os.path.join(webdriver_path,"chromedriver")
+    if platform.system().lower()=="windows":
+        chromedriver_path = os.path.join(webdriver_path,"chromedriver.exe")
+    return chromedriver_path
 
-    global debugMode
+def get_chrome_options(webdriver_path, adblock_plus_enable, browser="chrome"):
+    chrome_options = webdriver.ChromeOptions()
+    if browser=="edge":
+        chrome_options = webdriver.EdgeOptions()
+    if browser=="safari":
+        chrome_options = webdriver.SafariOptions()
 
-    if not config_dict is None:
-        # read config.
-        if 'homepage' in config_dict:
-            homepage = config_dict["homepage"]
+    # some windows cause: timed out receiving message from renderer
+    if adblock_plus_enable:
+        # PS: this is ocx version.
+        no_google_analytics_path, no_ad_path = get_favoriate_extension_path(webdriver_path)
 
-        if 'user_id' in config_dict:
-            user_id = config_dict["user_id"]
+        if os.path.exists(no_google_analytics_path):
+            chrome_options.add_extension(no_google_analytics_path)
+        if os.path.exists(no_ad_path):
+            chrome_options.add_extension(no_ad_path)
 
-        if 'user_name' in config_dict:
-            user_name = config_dict["user_name"]
+    chrome_options.add_argument('--disable-features=TranslateUI')
+    chrome_options.add_argument('--disable-translate')
+    chrome_options.add_argument('--lang=zh-TW')
 
-        if 'user_tel' in config_dict:
-            user_tel = config_dict["user_tel"]
+    # for navigator.webdriver
+    chrome_options.add_experimental_option("excludeSwitches", ['enable-automation'])
+    # Deprecated chrome option is ignored: useAutomationExtension
+    #chrome_options.add_experimental_option('useAutomationExtension', False)
+    chrome_options.add_experimental_option("prefs", {"credentials_enable_service": False, "profile.password_manager_enabled": False})
 
-        if 'user_birthday' in config_dict:
-            user_birthday = config_dict["user_birthday"]
+    #caps = DesiredCapabilities().CHROME
+    caps = chrome_options.to_capabilities()
 
-        if 'user_gender' in config_dict:
-            user_gender = config_dict["user_gender"]
+    #caps["pageLoadStrategy"] = u"normal"  #  complete
+    caps["pageLoadStrategy"] = u"eager"  #  interactive
+    #caps["pageLoadStrategy"] = u"none"
 
-        if 'visit_time' in config_dict:
-            visit_time = config_dict["visit_time"]
+    #caps["unhandledPromptBehavior"] = u"dismiss and notify"  #  default
+    #caps["unhandledPromptBehavior"] = u"ignore"
+    #caps["unhandledPromptBehavior"] = u"dismiss"
+    caps["unhandledPromptBehavior"] = u"accept"
 
-        if 'dr_name' in config_dict:
-            dr_name = config_dict["dr_name"]
+    return chrome_options, caps
 
-        # output config:
-        print("version", app_version)
-        print("homepage", homepage)
-        print("user_id", user_id)
-        print("user_name", user_name)
-        print("user_tel", user_tel)
-        print("user_birthday", user_birthday)
-        print("user_gender", user_gender)
-        print("visit_time", visit_time)
-        print("dr_name", dr_name)
-        
-        print("debugMode", debugMode)
+def load_chromdriver_normal(webdriver_path, driver_type, adblock_plus_enable):
+    chromedriver_path = get_chromedriver_path(webdriver_path)
+    chrome_service = Service(chromedriver_path)
+    chrome_options, caps = get_chrome_options(webdriver_path, adblock_plus_enable)
+    driver = None
+    try:
+        # method 6: Selenium Stealth
+        driver = webdriver.Chrome(service=chrome_service, options=chrome_options, desired_capabilities=caps)
+    except Exception as exc:
+        error_message = str(exc)
+        left_part = None
+        if "Stacktrace:" in error_message:
+            left_part = error_message.split("Stacktrace:")[0]
+            print(left_part)
 
-        # entry point
-        # 說明：自動開啟第一個的網頁
-        if homepage is None:
-            homepage = ""
-        if len(homepage) == 0:
-            homepage = homepage_default
+        if "This version of ChromeDriver only supports Chrome version" in error_message:
+            print(CONST_CHROME_VERSION_NOT_MATCH_EN)
+            print(CONST_CHROME_VERSION_NOT_MATCH_TW)
 
-        Root_Dir = ""
-        if browser == "chrome":
+    if driver_type=="stealth":
+        from selenium_stealth import stealth
+        # Selenium Stealth settings
+        stealth(driver,
+              languages=["zh-TW", "zh"],
+              vendor="Google Inc.",
+              platform="Win32",
+              webgl_vendor="Intel Inc.",
+              renderer="Intel Iris OpenGL Engine",
+              fix_hairline=True,
+          )
+    #print("driver capabilities", driver.capabilities)
+
+    return driver
+
+def load_chromdriver_uc(webdriver_path, adblock_plus_enable):
+    import undetected_chromedriver as uc
+
+    chromedriver_path = get_chromedriver_path(webdriver_path)
+
+    options = uc.ChromeOptions()
+    options.page_load_strategy="eager"
+
+    #print("strategy", options.page_load_strategy)
+
+    if adblock_plus_enable:
+        no_google_analytics_path, no_ad_path = get_favoriate_extension_path(webdriver_path)
+        no_google_analytics_folder_path = no_google_analytics_path.replace('.crx','')
+        no_ad_folder_path = no_ad_path.replace('.crx','')
+        load_extension_path = ""
+        if os.path.exists(no_google_analytics_folder_path):
+            load_extension_path += "," + no_google_analytics_folder_path
+        if os.path.exists(no_ad_folder_path):
+            load_extension_path += "," + no_ad_folder_path
+        if len(load_extension_path) > 0:
+            options.add_argument('--load-extension=' + load_extension_path[1:])
+
+    options.add_argument('--disable-features=TranslateUI')
+    options.add_argument('--disable-translate')
+    options.add_argument('--lang=zh-TW')
+
+    options.add_argument("--password-store=basic")
+    options.add_experimental_option("prefs", {"credentials_enable_service": False, "profile.password_manager_enabled": False})
+
+    caps = options.to_capabilities()
+    caps["unhandledPromptBehavior"] = u"accept"
+
+    driver = None
+    if os.path.exists(chromedriver_path):
+        print("Use user driver path:", chromedriver_path)
+        #driver = uc.Chrome(service=chrome_service, options=options, suppress_welcome=False)
+        is_local_chrome_browser_lower = False
+        try:
+            driver = uc.Chrome(executable_path=chromedriver_path, options=options, desired_capabilities=caps, suppress_welcome=False)
+        except Exception as exc:
+            error_message = str(exc)
+            left_part = None
+            if "Stacktrace:" in error_message:
+                left_part = error_message.split("Stacktrace:")[0]
+                print(left_part)
+
+            if "This version of ChromeDriver only supports Chrome version" in error_message:
+                print(CONST_CHROME_VERSION_NOT_MATCH_EN)
+                print(CONST_CHROME_VERSION_NOT_MATCH_TW)
+                is_local_chrome_browser_lower = True
+            pass
+
+        if is_local_chrome_browser_lower:
+            print("Use local user downloaded chromedriver to lunch chrome browser.")
+            driver_type = "selenium"
+            driver = load_chromdriver_normal(webdriver_path, driver_type, adblock_plus_enable)
+    else:
+        print("Oops! web driver not on path:",chromedriver_path )
+        print('let uc automatically download chromedriver.')
+        try:
+            driver = uc.Chrome(options=options, desired_capabilities=caps, suppress_welcome=False)
+        except Exception as exc:
+            error_message = str(exc)
+            left_part = None
+            if "Stacktrace:" in error_message:
+                left_part = error_message.split("Stacktrace:")[0]
+                print(left_part)
+
+            if "This version of ChromeDriver only supports Chrome version" in error_message:
+                print(CONST_CHROME_VERSION_NOT_MATCH_EN)
+                print(CONST_CHROME_VERSION_NOT_MATCH_TW)
+                is_local_chrome_browser_lower = True
+            pass
+
+    if driver is None:
+        print("create web drive object fail!")
+    else:
+        download_dir_path="."
+        params = {
+            "behavior": "allow",
+            "downloadPath": os.path.realpath(download_dir_path)
+        }
+        #print("assign setDownloadBehavior.")
+        driver.execute_cdp_cmd("Page.setDownloadBehavior", params)
+    #print("driver capabilities", driver.capabilities)
+
+    return driver
+
+def close_browser_tabs(driver):
+    if not driver is None:
+        try:
+            window_handles_count = len(driver.window_handles)
+            if window_handles_count > 1:
+                driver.switch_to.window(driver.window_handles[1])
+                driver.close()
+                driver.switch_to.window(driver.window_handles[0])
+        except Exception as excSwithFail:
+            pass
+
+def get_driver_by_config(config_dict):
+    global driver
+
+    homepage = None
+    browser = None
+    language = "English"
+
+    # read config.
+    homepage = config_dict["homepage"]
+    browser = config_dict["advanced"]["browser"]
+
+    driver_type = config_dict["advanced"]["webdriver_type"]
+
+    # output config:
+    print("maxbot app version", CONST_APP_VERSION)
+    print("python version", platform.python_version())
+    print("platform", platform.platform())
+    print("homepage", homepage)
+
+    print("==[advanced]==")
+    print(config_dict["advanced"])
+
+    Root_Dir = get_app_root()
+    webdriver_path = os.path.join(Root_Dir, "webdriver")
+    print("platform.system().lower():", platform.system().lower())
+
+    adblock_plus_enable = False
+
+    if browser == "chrome":
+        # method 6: Selenium Stealth
+        if driver_type != CONST_WEBDRIVER_TYPE_UC:
+            driver = load_chromdriver_normal(webdriver_path, driver_type, adblock_plus_enable)
+        else:
             # method 5: uc
-            #import undetected_chromedriver as uc
+            # multiprocessing not work bug.
+            if platform.system().lower()=="windows":
+                if hasattr(sys, 'frozen'):
+                    from multiprocessing import freeze_support
+                    freeze_support()
+            driver = load_chromdriver_uc(webdriver_path, adblock_plus_enable)
 
-            # method 6: Selenium Stealth
-            #from selenium_stealth import stealth
+    if browser == "firefox":
+        # default os is linux/mac
+        # download url: https://github.com/mozilla/geckodriver/releases
+        chromedriver_path = os.path.join(webdriver_path,"geckodriver")
+        if platform.system().lower()=="windows":
+            chromedriver_path = os.path.join(webdriver_path,"geckodriver.exe")
 
-            DEFAULT_ARGS = [
-                '--disable-audio-output',
-                '--disable-background-networking',
-                '--disable-background-timer-throttling',
-                '--disable-breakpad',
-                '--disable-browser-side-navigation',
-                '--disable-checker-imaging', 
-                '--disable-client-side-phishing-detection',
-                '--disable-default-apps',
-                '--disable-demo-mode', 
-                '--disable-dev-shm-usage',
-                #'--disable-extensions',
-                '--disable-features=site-per-process',
-                '--disable-hang-monitor',
-                '--disable-in-process-stack-traces', 
-                '--disable-javascript-harmony-shipping', 
-                '--disable-logging', 
-                '--disable-notifications', 
-                '--disable-popup-blocking',
-                '--disable-prompt-on-repost',
-                '--disable-perfetto',
-                '--disable-permissions-api', 
-                '--disable-plugins',
-                '--disable-presentation-api',
-                '--disable-reading-from-canvas', 
-                '--disable-renderer-accessibility', 
-                '--disable-renderer-backgrounding', 
-                '--disable-shader-name-hashing', 
-                '--disable-smooth-scrolling',
-                '--disable-speech-api',
-                '--disable-speech-synthesis-api',
-                '--disable-sync',
-                '--disable-translate',
+        if "macos" in platform.platform().lower():
+            if "arm64" in platform.platform().lower():
+                chromedriver_path = os.path.join(webdriver_path,"geckodriver_arm")
 
-                '--ignore-certificate-errors',
+        webdriver_service = Service(chromedriver_path)
+        driver = None
+        try:
+            driver = webdriver.Firefox(service=webdriver_service)
+        except Exception as exc:
+            error_message = str(exc)
+            left_part = None
+            if "Stacktrace:" in error_message:
+                left_part = error_message.split("Stacktrace:")[0]
+                print(left_part)
 
-                '--metrics-recording-only',
-                '--no-first-run',
-                '--no-experiments',
-                '--safebrowsing-disable-auto-update',
-                #'--enable-automation',
-                '--password-store=basic',
-                '--use-mock-keychain',
-                '--lang=zh-TW',
-                '--stable-release-mode',
-                '--use-mobile-user-agent', 
-                '--webview-disable-safebrowsing-support',
-                #'--no-sandbox',
-                #'--incognito',
-            ]
+    if browser == "edge":
+        # default os is linux/mac
+        # download url: https://developer.microsoft.com/zh-tw/microsoft-edge/tools/webdriver/
+        chromedriver_path = os.path.join(webdriver_path,"msedgedriver")
+        if platform.system().lower()=="windows":
+            chromedriver_path = os.path.join(webdriver_path,"msedgedriver.exe")
 
-            chrome_options = webdriver.ChromeOptions()
+        webdriver_service = Service(chromedriver_path)
+        chrome_options, caps = get_chrome_options(webdriver_path, adblock_plus_enable, browser="edge")
 
-            # for navigator.webdriver
-            chrome_options.add_experimental_option("excludeSwitches", ['enable-automation'])
-            chrome_options.add_experimental_option('useAutomationExtension', False)
-            chrome_options.add_experimental_option("prefs", {"profile.password_manager_enabled": False, "credentials_enable_service": False,'profile.default_content_setting_values':{'notifications':2}})
+        driver = None
+        try:
+            driver = webdriver.Edge(service=webdriver_service, options=chrome_options)
+        except Exception as exc:
+            error_message = str(exc)
+            #print(error_message)
+            left_part = None
+            if "Stacktrace:" in error_message:
+                left_part = error_message.split("Stacktrace:")[0]
+                print(left_part)
 
-            # default os is linux/mac
-            chromedriver_path =Root_Dir+ "webdriver/chromedriver"
-            if platform.system()=="windows":
-                chromedriver_path =Root_Dir+ "webdriver/chromedriver.exe"
+    if browser == "safari":
+        driver = None
+        try:
+            driver = webdriver.Safari()
+        except Exception as exc:
+            error_message = str(exc)
+            #print(error_message)
+            left_part = None
+            if "Stacktrace:" in error_message:
+                left_part = error_message.split("Stacktrace:")[0]
+                print(left_part)
 
-            #caps = DesiredCapabilities().CHROME
-            caps = chrome_options.to_capabilities()
-
-            #caps["pageLoadStrategy"] = u"normal"  #  complete
-            caps["pageLoadStrategy"] = u"eager"  #  interactive
-            #caps["pageLoadStrategy"] = u"none"
-            
-            #caps["unhandledPromptBehavior"] = u"dismiss and notify"  #  default
-            caps["unhandledPromptBehavior"] = u"ignore"
-            #caps["unhandledPromptBehavior"] = u"dismiss"
-
-            # method 4:
-            chrome_service = Service(chromedriver_path)
-
-            driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
-
-
-        if browser == "firefox":
-            # default os is linux/mac
-            chromedriver_path =Root_Dir+ "webdriver/geckodriver"
-            if platform.system()=="windows":
-                chromedriver_path =Root_Dir+ "webdriver/geckodriver.exe"
-
-            firefox_service = Service(chromedriver_path)
-            driver = webdriver.Firefox(service=firefox_service)
-
-        time.sleep(1.0)
-
+    if driver is None:
+        print("create web driver object fail @_@;")
+    else:
         # get url from dropdownlist.
         homepage_url = ""
         if len(homepage) > 0:
@@ -262,27 +366,24 @@ def load_config_from_local(driver):
                 target_index = homepage.find(target_str)
                 homepage_url = homepage[target_index:]
 
-        if len(homepage_url) > 0:
-            try:
-                window_handles_count = len(driver.window_handles)
-                if window_handles_count >= 1:
-                    driver.switch_to.window(driver.window_handles[1])
-                    driver.close()
-                    driver.switch_to.window(driver.window_handles[0])
-            except Exception as excSwithFail:
-                pass
-
+        try:
+            print("goto url:", homepage_url)
             driver.get(homepage_url)
-            print("after homepage:", homepage_url)
-    else:
-        print("Config error!")
+        except WebDriverException as exce2:
+            print('oh no not again, WebDriverException')
+            print('WebDriverException:', exce2)
+        except Exception as exce1:
+            print('get URL Exception:', exce1)
+            pass
 
     return driver
 
+
 # start to find dr name.
-def tzuchi_OpdTimeShow(driver):
+def tzuchi_OpdTimeShow(driver, config_dict):
     ret = True
 
+    dr_name = config_dict["dr_name"]
     is_dr_name_found = False
 
     el = None
@@ -352,93 +453,134 @@ def tzuchi_OpdTimeShow(driver):
 
     return ret
 
-def tzuchi_RegNo(driver):
+def keyin_captcha_code(driver, answer):
+    form_input = None
+    try:
+        form_input = driver.find_element(By.ID, 'txtVCode')
+        if not form_input is None:
+            form_input.clear()
+            form_input.send_keys(answer)
+            form_input.send_keys(Keys.ENTER)
+    except Exception as exc:
+        pass
+
+def reload_captcha(driver):
+    el_btn = None
+    try:
+        el_btn = driver.find_element(By.ID, 'Button4')
+        if not el_btn is None:
+            el_btn.click()
+    except Exception as exc:
+        pass
+
+def auto_ocr(driver, ocr, previous_answer, Captcha_Browser, ocr_captcha_image_source):
+    show_debug_message = True       # debug.
+    show_debug_message = False      # online
+    print("start to ddddocr")
+
+    is_need_redo_ocr = False
+    is_form_sumbited = False
+
+    orc_answer = None
+    if not ocr is None:
+        ocr_start_time = time.time()
+
+        img_base64 = None
+        if ocr_captcha_image_source == CONST_OCR_CAPTCH_IMAGE_SOURCE_NON_BROWSER:
+            if not Captcha_Browser is None:
+                img_base64 = base64.b64decode(Captcha_Browser.Request_Captcha())
+        if ocr_captcha_image_source == CONST_OCR_CAPTCH_IMAGE_SOURCE_CANVAS:
+            image_id = 'imgVI'
+            try:
+                form_verifyCode_base64 = driver.execute_async_script("""
+                    var canvas = document.createElement('canvas');
+                    var context = canvas.getContext('2d');
+                    var img = document.getElementById('%s');
+                    canvas.height = img.naturalHeight;
+                    canvas.width = img.naturalWidth;
+                    context.drawImage(img, 0, 0);
+                    callback = arguments[arguments.length - 1];
+                    callback(canvas.toDataURL());
+                    """ % (image_id))
+                img_base64 = base64.b64decode(form_verifyCode_base64.split(',')[1])
+            except Exception as exc:
+                if show_debug_message:
+                    print("canvas exception:", str(exc))
+                pass
+        if not img_base64 is None:
+            try:
+                orc_answer = ocr.classification(img_base64)
+            except Exception as exc:
+                pass
+        else:
+            if previous_answer is None:
+                # page is not ready, retry again.
+                # PS: usually occur in async script get captcha image.
+                is_need_redo_ocr = True
+                time.sleep(0.1)
+
+        ocr_done_time = time.time()
+        ocr_elapsed_time = ocr_done_time - ocr_start_time
+        print("ocr elapsed time:", "{:.3f}".format(ocr_elapsed_time))
+
+    else:
+        print("ddddocr is None")
+
+    if not orc_answer is None:
+        orc_answer = orc_answer.strip()
+        print("orc_answer:", orc_answer)
+        if len(orc_answer)==5:
+            is_form_sumbited = keyin_captcha_code(driver, answer = orc_answer)
+        else:
+            is_need_redo_ocr = True
+
+            if previous_answer != orc_answer:
+                previous_answer = orc_answer
+                print("get new captcha.")
+                reload_captcha(driver)
+
+                if ocr_captcha_image_source == CONST_OCR_CAPTCH_IMAGE_SOURCE_CANVAS:
+                    time.sleep(0.1)
+
+    return is_need_redo_ocr, previous_answer, is_form_sumbited
+
+def tzuchi_RegNo(driver, config_dict, ocr, Captcha_Browser):
+    ocr_captcha_enable = config_dict["ocr_captcha"]["enable"]
+
+    visit_time = config_dict["visit_time"]
+    user_id = config_dict["user_id"]
+    user_tel = config_dict["user_tel"]
+
     is_fill_text_by_app = False
 
-    print("check 初診.")
+    #print("check 初診.")
     # for "first time"
     # 初診/複診
 
-    visit_time_html_id = 'MainContent_rblRegFM_1'
+    visit_time_html_id = 'rblRegFM_1'
     if visit_time == '初診':
-        visit_time_html_id = 'MainContent_rblRegFM_0'
+        visit_time_html_id = 'rblRegFM_0'
 
+    # default is 複診
     el_radio = None
     try:
-        # direct user version 2:
         el_radio = driver.find_element(By.ID, visit_time_html_id)
     except Exception as exc:
         pass
         #print("find #visit_time_html_id fail")
-
-    if el_radio is not None:
-        try:
-            if not el_radio.is_selected():
-                el_radio.click()
-        except Exception as exc:
-            print("click MainContent_rblRegFM_0 radio fail")
-
-    # for User Gender
-    # 男/女 
-
-    user_gender_html_id = 'MainContent_rtbSexType_0'
-    if user_gender == '女':
-        user_gender_html_id = 'MainContent_rtbSexType_1'
-
-    el_radio = None
-    try:
-        # direct user version 2:
-        el_radio = driver.find_element(By.ID, user_gender_html_id)
-    except Exception as exc:
-        pass
-        #print("find #user_gender_html_id fail")
-
-    if el_radio is not None:
-        try:
-            if not el_radio.is_selected():
-                el_radio.click()
-        except Exception as exc:
-            print("click user_gender_html_id radio fail")
-
-    # for "ID type"
-    el_radio = None
-    try:
-        # version 1:
-        el_radio = driver.find_element(By.ID, 'rblRegFM_0')
-    except Exception as exc:
-        print("find #rblRegFM_0 fail")
+        
         # version 2:
         try:
-            el_radio = driver.find_element(By.ID, 'MainContent_IdSelectType2_0')
+            el_radio = driver.find_element(By.ID, 'MainContent_'+visit_time_html_id)
         except Exception as exc:
-            pass
-            #print("find #MainContent_IdSelectType2_0 fail")
+            print("find #MainContent_tbxMRNo fail")
 
     if el_radio is not None:
         try:
             if not el_radio.is_selected():
                 el_radio.click()
         except Exception as exc:
-            print("click MainContent_IdSelectType2_0 radio fail")
-
-    # for "ID type" case 2.
-    # when 初診, id name is different.
-    
-    el_radio = None
-    try:
-        # version 2:
-        el_radio = driver.find_element(By.ID, 'MainContent_IdSelectType1_0')
-    except Exception as exc:
-        pass
-        #222print("find #MainContent_IdSelectType1_0 fail")
-
-    if el_radio is not None:
-        try:
-            if not el_radio.is_selected():
-                el_radio.click()
-        except Exception as exc:
-            print("click MainContent_IdSelectType1_0 radio fail")
-
+            print("click rblRegFM_0 radio fail")
 
     el_text_id = None
     try:
@@ -462,30 +604,6 @@ def tzuchi_RegNo(driver):
                 is_fill_text_by_app = True
         except Exception as exc:
             print("send user_id fail")
-
-    # user name
-    el_text_name = None
-    try:
-        # direct, version 2:
-        el_text_name = driver.find_element(By.ID, 'MainContent_tbxName')
-    except Exception as exc:
-        pass
-        #print("find #MainContent_tbxName fail")
-
-    if el_text_name is not None:
-        print("found MainContent_tbxName")
-        try:
-            text_name_value = str(el_text_name.get_attribute('value'))
-            if text_name_value == "":
-                print("try to send keys:", user_name)
-                el_text_name.send_keys(user_name)
-                is_fill_text_by_app = True
-            else:
-                pass
-                print("text not empty, value:", text_name_value)
-        except Exception as exc:
-            print("sned MainContent_tbxName fail")
-
 
     # tel
     el_text_tel = None
@@ -513,70 +631,24 @@ def tzuchi_RegNo(driver):
         except Exception as exc:
             print("sned user_tel fail")
 
+    if ocr_captcha_enable:
+        ocr_captcha_image_source = CONST_OCR_CAPTCH_IMAGE_SOURCE_CANVAS
+        previous_answer = None
 
-    # birthday
-    el_text_birthday = None
-    try:
-        # direct, version 2:
-        el_text_birthday = driver.find_element(By.ID, 'MainContent_tbxBirthday')
-    except Exception as exc:
-        pass
-        #print("find #MainContent_tbxBirthday fail")
+        for redo_ocr in range(999):
+            is_need_redo_ocr, previous_answer, is_form_sumbited =  auto_ocr(driver, ocr, previous_answer, Captcha_Browser, ocr_captcha_image_source)
+            if is_form_sumbited:
+                is_verifyCode_editing = False
+                break
+            if not is_need_redo_ocr:
+                break
+        
 
-    if el_text_birthday is not None:
-        try:
-            text_birthday_value = str(el_text_birthday.get_attribute('value'))
-            if text_birthday_value == "":
-                #el_text_tel.click()
-                print("try to send keys")
-                el_text_birthday.send_keys(user_birthday)
-                is_fill_text_by_app = True
-        except Exception as exc:
-            print("sned MainContent_tbxBirthday fail")
-
-
-    #print("is_fill_text_by_app",is_fill_text_by_app)
-    if is_fill_text_by_app:
-        el_text_captcha = None
-        try:
-            # direct, version 1:
-            el_text_captcha = driver.find_element(By.ID, 'txtVCode')
-        except Exception as exc:
-            print("find #txtVCode fail")
-            # direct, version 2:
-            try:
-                el_text_captcha = driver.find_element(By.ID, 'MainContent_tbxVCode')
-            except Exception as exc:
-                print("find #MainContent_tbxVCode fail")
-
-        if el_text_captcha is not None:
-            try:
-                el_text_captcha.click()
-            except Exception as exc:
-                print("focus el_text_captcha fail")
-
-        if enable_captcha_ocr:
-            img_captcha = None
-            try:
-                img_captcha = driver.find_element(By.ID, 'imgVI')
-            except Exception as exc:
-                print("find #imgVI fail")
-
-            if img_captcha is not None:
-                try:
-                    img_captcha.screenshot('captcha.png')
-                except Exception as exc:
-                    print("focus el_text_captcha fail")
-
-def tzuchi_reg(url, driver):
+def tzuchi_reg(url, driver, config_dict, ocr, Captcha_Browser):
     #print("tzuchi_reg")
     ret = True
 
-    # step 1: list all dept.
-    if "/SecList_DL.aspx" in url:
-        pass
-
-    # step 2: get the first hyperlink.
+    # get the first hyperlink.
     is_match_dr_page_url = False
     dr_page_list = ['/OpdTimeShow.aspx', '/OpdTimeShow?']
     for each_page in dr_page_list:
@@ -586,87 +658,46 @@ def tzuchi_reg(url, driver):
             break
     if is_match_dr_page_url:
         #print("star to query dr name hyperlink")
-        ret = tzuchi_OpdTimeShow(driver)
+        ret = tzuchi_OpdTimeShow(driver, config_dict)
 
     # step 3: reg
     # app.tzuchi.com.tw/tchw/opdreg/RegNo.aspx
     reg_form_list = ['/RegNo.aspx', '/RegNo?']
     for each_page in reg_form_list:
         if each_page in url:
-            tzuchi_RegNo(driver)
+            tzuchi_RegNo(driver, config_dict, ocr, Captcha_Browser)
             break
 
     return ret
 
-def main():
-    global driver
-    driver = load_config_from_local(driver)
+# purpose: check alert poped.
+# PS: current version not enable...
+def check_pop_alert(driver):
+    is_alert_popup = False
 
-    # internal variable. 說明：這是一個內部變數，請略過。
-    url = ""
-    last_url = ""
+    # https://stackoverflow.com/questions/57481723/is-there-a-change-in-the-handling-of-unhandled-alert-in-chromedriver-and-chrome
+    default_close_alert_text = [
+    u'「南區醫院總額醫療服務審查分級作業原則」'
+    , u'無開放現場掛號及人工電話掛號'
+    , u'健康檢查不需掛號，請逕洽服務台'
+    ]
 
-    global debugMode
-    if debugMode:
-        print("Start to looping, detect browser url...")
-
-    while True:
-        time.sleep(0.1)
-
-        is_alert_popup = False
-
-        # pass if driver not loaded.
-        if driver is None:
-            continue
-
-        '''
-        try:
-            if not driver is None:
-                WebDriverWait(driver, 0.1).until(EC.alert_is_present(),
-                                               'Timed out waiting for PA creation confirmation popup to appear.')
-            #print("alert popup")
-            is_pass_alert = False
-            if last_url == "":
-                is_pass_alert = True
-
-            if u'SecList_DL.aspx' in last_url:
-                is_pass_alert = True
-
-            if u'OpdTimeShow.aspx' in last_url:
-                is_pass_alert = True
-                pass
-
-            print("is_pass_alert:", is_pass_alert)
-            if is_pass_alert:
-                alert = None
-                if not driver is None:
-                    alert = driver.switch_to.alert
-                if not alert is None:
-                    alert.accept()
-                    #print("alert accepted")
-            else:
-                is_alert_popup = True
-        except TimeoutException:
-            #print("no alert")
-            pass
-        '''
-
-        default_close_alert_text = [
-        u'「南區醫院總額醫療服務審查分級作業原則」'
-        , u'無開放現場掛號及人工電話掛號'
-        , u'健康檢查不需掛號，請逕洽服務台'
-        ]
+    if len(default_close_alert_text) > 0:
         try:
             alert = None
             if not driver is None:
                 alert = driver.switch_to.alert
             if not alert is None:
-                if not alert.text is None:
+                alert_text = str(alert.text)
+                if not alert_text is None:
                     is_match_auto_close_text = False
                     for txt in default_close_alert_text:
                         if len(txt) > 0:
                             if txt in alert.text:
                                 is_match_auto_close_text = True
+                        else:
+                            is_match_auto_close_text = True
+                    #print("is_match_auto_close_text:", is_match_auto_close_text)
                     #print("alert3 text:", alert.text)
 
                     if is_match_auto_close_text:
@@ -680,17 +711,49 @@ def main():
             #logger.error('NoAlertPresentException for alert')
             pass
         except NoSuchWindowException:
-            #print('NoSuchWindowException2 at this url:', url )
-            #print("last_url:", last_url)
-            try:
-                window_handles_count = len(driver.window_handles)
-                if window_handles_count >= 1:
-                    driver.switch_to.window(driver.window_handles[0])
-            except Exception as excSwithFail:
-                pass
+            pass
         except Exception as exc:
             logger.error('Exception2 for alert')
             logger.error(exc, exc_info=True)
+
+    return is_alert_popup
+
+def main():
+    config_dict = get_config_dict()
+
+    driver = None
+    if not config_dict is None:
+        driver = get_driver_by_config(config_dict)
+    else:
+        print("Load config error!")
+
+    # internal variable. 說明：這是一個內部變數，請略過。
+    url = ""
+    last_url = ""
+
+    DISCONNECTED_MSG = ': target window already closed'
+
+    ocr = None
+    Captcha_Browser = None
+    try:
+        if config_dict["ocr_captcha"]["enable"]:
+            ocr = ddddocr.DdddOcr(show_ad=False, beta=True)
+            Captcha_Browser = NonBrowser()
+    except Exception as exc:
+        pass
+
+
+    while True:
+        time.sleep(0.1)
+
+        is_alert_popup = False
+
+        # pass if driver not loaded.
+        if driver is None:
+            print("web driver not accessible!")
+            break
+
+        is_alert_popup = check_pop_alert(driver)
 
         #MUST "do nothing: if alert popup.
         #print("is_alert_popup:", is_alert_popup)
@@ -701,42 +764,59 @@ def main():
         try:
             url = driver.current_url
         except NoSuchWindowException:
-            #print('NoSuchWindowException at this url:', url )
+            print('NoSuchWindowException at this url:', url )
             #print("last_url:", last_url)
+            #print("get_log:", driver.get_log('driver'))
+            window_handles_count = 0
             try:
                 window_handles_count = len(driver.window_handles)
+                #print("window_handles_count:", window_handles_count)
                 if window_handles_count >= 1:
                     driver.switch_to.window(driver.window_handles[0])
+                    driver.switch_to.default_content()
+                    time.sleep(0.2)
             except Exception as excSwithFail:
+                #print("excSwithFail:", excSwithFail)
                 pass
+            if window_handles_count==0:
+                try:
+                    driver_log = driver.get_log('driver')[-1]['message']
+                    print("get_log:", driver_log)
+                    if DISCONNECTED_MSG in driver_log:
+                        print('quit bot by NoSuchWindowException')
+                        driver.quit()
+                        sys.exit()
+                        break
+                except Exception as excGetDriverMessageFail:
+                    #print("excGetDriverMessageFail:", excGetDriverMessageFail)
+                    except_string = str(excGetDriverMessageFail)
+                    if 'HTTP method not allowed' in except_string:
+                        print('quit bot by close browser')
+                        driver.quit()
+                        sys.exit()
+                        break
 
         except UnexpectedAlertPresentException as exc1:
-            #print('UnexpectedAlertPresentException at this url:', url )
-            #print("last_url:", last_url)
-
+            # PS: DON'T remove this line.
+            is_verifyCode_editing = False
+            print('UnexpectedAlertPresentException at this url:', url )
+            #time.sleep(3.5)
+            # PS: do nothing...
+            # PS: current chrome-driver + chrome call current_url cause alert/prompt dialog disappear!
+            # raise exception at selenium/webdriver/remote/errorhandler.py
+            # after dialog disappear new excpetion: unhandled inspector error: Not attached to an active page
             is_pass_alert = False
-            if last_url == "":
-                is_pass_alert = True
-
-            if u'SecList_DL.aspx' in last_url:
-                is_pass_alert = True
-
-            if u'OpdTimeShow.aspx' in last_url:
-                pass
-                #is_pass_alert = True
-
-            print("is_pass_alert:", is_pass_alert)
-
+            is_pass_alert = True
             if is_pass_alert:
                 try:
                     driver.switch_to.alert.accept()
-                    #print('Alarm! ALARM!')
-                except NoAlertPresentException:
+                except Exception as exc:
                     pass
-                    #print('*crickets*')
-        
+
         except Exception as exc:
-            logger.error('Exception')
+            is_verifyCode_editing = False
+
+            logger.error('Maxbot URL Exception')
             logger.error(exc, exc_info=True)
 
             #UnicodeEncodeError: 'ascii' codec can't encode characters in position 63-72: ordinal not in range(128)
@@ -748,27 +828,39 @@ def main():
 
             if len(str_exc)==0:
                 str_exc = repr(exc)
-            
-            exit_bot_error_strings = [u'Max retries exceeded with url', u'chrome not reachable', u'without establishing a connection']
-            for str_chrome_not_reachable in exit_bot_error_strings:
+
+            exit_bot_error_strings = [u'Max retries exceeded'
+            , u'chrome not reachable'
+            , u'unable to connect to renderer'
+            , u'failed to check if window was closed'
+            , u'Failed to establish a new connection'
+            , u'Connection refused'
+            , u'disconnected'
+            , u'without establishing a connection'
+            , u'web view not found'
+            ]
+            for each_error_string in exit_bot_error_strings:
                 # for python2
+                # say goodbye to python2
+                '''
                 try:
                     basestring
-                    if isinstance(str_chrome_not_reachable, unicode):
-                        str_chrome_not_reachable = str(str_chrome_not_reachable)
+                    if isinstance(each_error_string, unicode):
+                        each_error_string = str(each_error_string)
                 except NameError:  # Python 3.x
                     basestring = str
-
+                '''
                 if isinstance(str_exc, str):
-                    if str_chrome_not_reachable in str_exc:
-                        print(u'quit bot')
+                    if each_error_string in str_exc:
+                        print('quit bot by error:', each_error_string)
                         driver.quit()
-                        import sys
                         sys.exit()
+                        break
 
-            print("exc", str_exc)
+            # not is above case, print exception.
+            print("Exception:", str_exc)
             pass
-            
+
         if url is None:
             continue
         else:
@@ -776,21 +868,17 @@ def main():
                 continue
 
         # 說明：輸出目前網址，覺得吵的話，請註解掉這行。
-        if debugMode:
-            print("url:", url)
+        #print("url:", url)
 
         if len(url) > 0 :
             if url != last_url:
                 print(url)
             last_url = url
 
-        # 
         tzuchi_domain_list = ['tzuchi-healthcare.org.tw','tzuchi.com.tw']
         for each_domain in tzuchi_domain_list:
             if each_domain in url:
-                ret = tzuchi_reg(url, driver)
-                if ret == False:
-                    #last_url = u"https://app.tzuchi.com.tw/tchw/opdreg/SecList_DL.aspx"
-                    pass
+                ret = tzuchi_reg(url, driver, config_dict, ocr, Captcha_Browser)
 
-main()
+if __name__ == "__main__":
+    main()
