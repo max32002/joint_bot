@@ -15,6 +15,8 @@ https://github.com/max32002/joint_bot/releases
 # How to use (如何使用)
 https://max-everyday.com/2018/08/max-auto-reg-bot/
 
+在「進階設定」中，如果你的 webdriver 類別是使用 selenium, 那你除了主程式，請另外再下載 ChromeDriver 元件。如果你沒有修改預設值的話，程式會自動下載最新版的 webdriver 元件，你只需更新chrome 瀏覽器到最新版即可。
+
 # How to execute source code (透過原始碼的執行方法)
 1: download chromedrive to "webdriver" folder:
 http://chromedriver.chromium.org/downloads
