@@ -42,6 +42,9 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 CONST_APP_VERSION = "MaxRegBot (2023.02.19)"
 
+CONST_CHROME_VERSION_NOT_MATCH_EN="Please download the WebDriver version to match your browser version."
+CONST_CHROME_VERSION_NOT_MATCH_TW="請下載與您瀏覽器相同版本的WebDriver版本，或更新您的瀏覽器版本。"
+
 CONST_OCR_CAPTCH_IMAGE_SOURCE_NON_BROWSER = "NonBrowser"
 CONST_OCR_CAPTCH_IMAGE_SOURCE_CANVAS = "canvas"
 
