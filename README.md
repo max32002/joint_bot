@@ -1,6 +1,8 @@
 # Max掛號機器人
 MaxRegBot是一個免費、開放原始碼的掛號機器人。祝您掛號成功。
 
+說明: 在慈濟只要成功地掛到一次初診, 即使按了取消, 完全沒去看過醫生, 第二次再掛號, 就不算初診, 要選使複診。
+
 MaxRegBot help you quickly make your registration online
 
 # Download (應用程式下載)
@@ -8,6 +10,7 @@ https://github.com/max32002/joint_bot/releases
 
 # Demo (示範影片)
 
+* 2023-11-29：https://youtu.be/BMT58RfIf6Y (增加新欄位)
 * 2023-02-19：https://youtu.be/RwXAOIhXA9I (支援驗證碼自動輸入)
 * 2022-02-17：https://youtu.be/bpuI2m-L7X0
 * 2022-05-06：https://youtu.be/QRLAFMY4yJY
