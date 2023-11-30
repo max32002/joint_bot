@@ -1,0 +1,13 @@
+Pillow==9.5.0
+selenium>=4.0.0
+undetected-chromedriver
+ddddocr
+urllib3>=1.21.1
+numpy
+
+# Migrate looseversion to fix distutils issues on python 3.12+ for undetected-chromedriver
+looseversion
+
+# chromedriver_autoinstaller
+# PS: chromedriver_autoinstaller, please use max fork version.
+# python -m pip install git+https://github.com/max32002/python-chromedriver-autoinstaller@master
