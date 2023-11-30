@@ -19,7 +19,7 @@ import json
 import webbrowser
 import base64
 
-CONST_APP_VERSION = "MaxRegBot (2023.02.19)"
+CONST_APP_VERSION = "MaxRegBot (2023.11.29)"
 CONST_HOMEPAGE_DEFAULT = "慈濟首頁 http://www.tzuchi.com.tw/zh/"
 
 CONST_OCR_CAPTCH_IMAGE_SOURCE_NON_BROWSER = "NonBrowser"
@@ -61,13 +61,17 @@ def load_translate():
 
     en_us["dr_name"] = 'Doctor Name'
     en_us["user_id"] = 'User ID'
+    en_us["user_name"] = 'User Name'
     en_us["user_tel"] = 'User Tel'
+    en_us["user_birthday"] = 'User Birthday'
+    en_us["user_sextype"] = 'User Gender'
     en_us["visit_time"] = 'Visit Time'
 
     en_us["ocr_captcha"] = 'OCR captcha'
     en_us["ocr_captcha_force_submit"] = 'Away from keyboard'
     en_us["ocr_captcha_image_source"] = 'OCR image source'
     en_us["webdriver_type"] = 'WebDriver type'
+    en_us["verbose"] = 'Verbose mode'
 
     en_us["preference"] = 'Preference'
     en_us["advanced"] = 'Advanced'
@@ -93,14 +97,18 @@ def load_translate():
     zh_tw["enable"] = '啟用'
 
     zh_tw["dr_name"] = '看診醫師'
-    zh_tw["user_id"] = '身份證字號(或病歷號)'
+    zh_tw["user_id"] = '證號'
+    zh_tw["user_name"] = '姓名'
     zh_tw["user_tel"] = '連絡電話'
+    zh_tw["user_birthday"] = '西元出生日期'
+    zh_tw["user_sextype"] = '性別'
     zh_tw["visit_time"] = '掛號類別'
 
     zh_tw["ocr_captcha"] = '猜測驗證碼'
     zh_tw["ocr_captcha_force_submit"] = '掛機模式'
     zh_tw["ocr_captcha_image_source"] = 'OCR圖片取得方式'
     zh_tw["webdriver_type"] = 'WebDriver類別'
+    zh_tw["verbose"] = '輸出詳細除錯訊息'
 
     zh_tw["preference"] = '偏好設定'
     zh_tw["advanced"] = '進階設定'
@@ -126,14 +134,18 @@ def load_translate():
     zh_cn["enable"] = '启用'
 
     zh_cn["dr_name"] = '看诊医师'
-    zh_cn["user_id"] = '身份证字号(或病历号)'
+    zh_cn["user_id"] = '身份证字号'
+    zh_cn["user_name"] = '姓名'
     zh_cn["user_tel"] = '连络电话'
+    zh_cn["user_birthday"] = '公元出生日期'
+    zh_cn["user_sextype"] = '性別'
     zh_cn["visit_time"] = '挂号类别'
 
     zh_cn["ocr_captcha"] = '猜测验证码'
     zh_cn["ocr_captcha_force_submit"] = '挂机模式'
     zh_cn["ocr_captcha_image_source"] = 'OCR图像源'
     zh_cn["webdriver_type"] = 'WebDriver类别'
+    zh_cn["verbose"] = '输出详细除错讯息'
 
     zh_cn["preference"] = '偏好设定'
     zh_cn["advanced"] = '進階設定'
@@ -161,13 +173,17 @@ def load_translate():
 
     ja_jp["dr_name"] = '医師名'
     ja_jp["user_id"] = 'ユーザーID'
+    zh_cn["user_name"] = 'ユーザー名'
     ja_jp["user_tel"] = 'ユーザーの電話番号'
+    ja_jp["user_birthday"] = '西暦での生年月日'
+    ja_jp["user_sextype"] = '性別'
     ja_jp["visit_time"] = '登録種別'
 
     ja_jp["ocr_captcha"] = 'キャプチャを推測する'
     ja_jp["ocr_captcha_force_submit"] = 'キーボードから離れて'
     ja_jp["ocr_captcha_image_source"] = 'OCR 画像ソース'
     ja_jp["webdriver_type"] = 'WebDriverタイプ'
+    ja_jp["verbose"] = '詳細モード'
 
     ja_jp["preference"] = '設定'
     ja_jp["advanced"] = '高度な設定'
@@ -207,22 +223,27 @@ def get_default_config():
     config_dict={}
 
     config_dict["homepage"] = CONST_HOMEPAGE_DEFAULT
+    config_dict["browser"] = "chrome"
+    config_dict["webdriver_type"] = CONST_WEBDRIVER_TYPE_UC
+
     config_dict["user_id"] = ""
+    config_dict["user_name"] = ""
     config_dict["user_tel"] = ""
+    config_dict["user_birthday"] = ""
+    config_dict["user_sextype"] = "男"
     config_dict["visit_time"] = ""
     config_dict["dr_name"] = ""
 
     config_dict["advanced"] = {}
-    config_dict["advanced"]["browser"] = "chrome"
     config_dict["advanced"]["language"] = "English"
-    config_dict["advanced"]["webdriver_type"] = CONST_WEBDRIVER_TYPE_UC
+    config_dict["advanced"]["verbose"] = False
+    config_dict["advanced"]["headless"] = False
 
     config_dict["ocr_captcha"] = {}
     config_dict["ocr_captcha"]["enable"] = True
     config_dict["ocr_captcha"]["image_source"] = CONST_OCR_CAPTCH_IMAGE_SOURCE_CANVAS
 
     return config_dict
-
 
 def load_json():
     app_root = get_app_root()
@@ -264,8 +285,11 @@ def btn_save_act(language_code, slience_mode=False):
     global combo_homepage
 
     global txt_user_id
+    global txt_user_name
     global txt_user_tel
+    global txt_user_birthday
     global txt_dr_name
+    global combo_user_sextype
     global combo_visit_time
 
     is_all_data_correct = True
@@ -280,9 +304,16 @@ def btn_save_act(language_code, slience_mode=False):
     if is_all_data_correct:
         if txt_user_id.get().strip()=="":
             is_all_data_correct = False
-            messagebox.showerror("Error", "Please enter user id")
+            messagebox.showerror("Error", "Please enter user ID number")
         else:
             config_dict["user_id"] = txt_user_id.get().strip()
+
+    if is_all_data_correct:
+        if txt_user_name.get().strip()=="":
+            is_all_data_correct = False
+            messagebox.showerror("Error", "Please enter user name")
+        else:
+            config_dict["user_name"] = txt_user_name.get().strip()
 
     if is_all_data_correct:
         if txt_user_tel.get().strip()=="":
@@ -291,23 +322,35 @@ def btn_save_act(language_code, slience_mode=False):
         else:
             config_dict["user_tel"] = txt_user_tel.get().strip()
 
+    if is_all_data_correct:
+        if txt_user_birthday.get().strip()=="":
+            is_all_data_correct = False
+            messagebox.showerror("Error", "Please enter user birthday")
+        else:
+            config_dict["user_birthday"] = txt_user_birthday.get().strip()
+
     global combo_browser
     global combo_language
     global chk_state_ocr_captcha
+
+    global chk_state_verbose
     global combo_webdriver_type
 
     if is_all_data_correct:
         config_dict["dr_name"] = txt_dr_name.get().strip()
         config_dict["visit_time"] = combo_visit_time.get().strip()
+        config_dict["user_sextype"] = combo_user_sextype.get().strip()
 
-        config_dict["advanced"]["browser"] = combo_browser.get().strip()
+        config_dict["browser"] = combo_browser.get().strip()
         config_dict["advanced"]["language"] = combo_language.get().strip()
         # display as new language.
         language_code = get_language_code_by_name(config_dict["advanced"]["language"])
 
         config_dict["ocr_captcha"] = {}
         config_dict["ocr_captcha"]["enable"] = bool(chk_state_ocr_captcha.get())
-        config_dict["advanced"]["webdriver_type"] = combo_webdriver_type.get().strip()
+
+        config_dict["advanced"]["verbose"] = bool(chk_state_verbose.get())
+        config_dict["webdriver_type"] = combo_webdriver_type.get().strip()
 
     # save config.
     if is_all_data_correct:
@@ -407,6 +450,7 @@ def applyNewLanguage():
 
     global lbl_ocr_captcha
     global lbl_webdriver_type
+    global lbl_verbose
 
     # for checkbox
     global chk_ocr_captcha
@@ -416,6 +460,7 @@ def applyNewLanguage():
     lbl_language.config(text=translate[language_code]["language"])
     lbl_ocr_captcha.config(text=translate[language_code]["ocr_captcha"])
     lbl_webdriver_type.config(text=translate[language_code]["webdriver_type"])
+    lbl_verbose.config(text=translate[language_code]["verbose"])
 
     chk_ocr_captcha.config(text=translate[language_code]["enable"])
 
@@ -427,12 +472,18 @@ def applyNewLanguage():
 
     global lbl_dr_name
     global lbl_user_id
+    global lbl_user_name
     global lbl_user_tel
+    global lbl_user_birthday
+    global lbl_user_sextype
     global lbl_visit_time
 
     lbl_dr_name.config(text=translate[language_code]["dr_name"])
     lbl_user_id.config(text=translate[language_code]["user_id"])
+    lbl_user_name.config(text=translate[language_code]["user_name"])
     lbl_user_tel.config(text=translate[language_code]["user_tel"])
+    lbl_user_birthday.config(text=translate[language_code]["user_birthday"])
+    lbl_user_sextype.config(text=translate[language_code]["user_sextype"])
     lbl_visit_time.config(text=translate[language_code]["visit_time"])
 
     global lbl_slogan
@@ -456,6 +507,9 @@ def applyNewLanguage():
         btn_exit.config(text=translate[language_code]["exit"])
     btn_restore_defaults.config(text=translate[language_code]["restore_defaults"])
 
+    global chk_verbose
+    chk_verbose.config(text=translate[language_code]["enable"])
+
 # PS: nothing need to do, at current process.
 def callbackHomepageOnChange(event):
     showHideBlocks()
@@ -467,27 +521,28 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
     visit_time_default = '初診'
     visit_time_list = (visit_time_default, '複診')
 
+    sextype_default = '男'
+    sextype_list = (sextype_default, '女', '不明')
+
     homepage = None
     user_id = ""
+    user_name = ""
     user_tel = ""
+    user_birthday = ""
+    user_sextype = ""
     visit_time = ""
     dr_name = ""
 
     if not config_dict is None:
         # read config.
         homepage = config_dict["homepage"]
-        user_id = config_dict[u"user_id"]
-        user_tel = config_dict[u"user_tel"]
-        visit_time = config_dict[u"visit_time"]
-        dr_name = config_dict[u"dr_name"]
-
-        # output config:
-        print("homepage", homepage)
-        print("user_id", user_id)
-        print("user_tel", user_tel)
-        print("visit_time", visit_time)
-        print("dr_name", dr_name)
-
+        user_id = config_dict["user_id"]
+        user_name = config_dict["user_name"]
+        user_tel = config_dict["user_tel"]
+        user_birthday = config_dict["user_birthday"]
+        user_sextype = config_dict["user_sextype"]
+        visit_time = config_dict["visit_time"]
+        dr_name = config_dict["dr_name"]
     else:
         print('config is none')
 
@@ -497,6 +552,9 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
 
     if visit_time == "":
         visit_time = visit_time_default
+
+    if user_sextype == "":
+        user_sextype = sextype_default
 
     # output to GUI.
     row_count = 0
@@ -510,7 +568,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
     lbl_homepage.grid(column=0, row=group_row_count, sticky = E)
 
     global combo_homepage
-    combo_homepage = ttk.Combobox(frame_group_header, state="readonly")
+    combo_homepage = ttk.Combobox(frame_group_header, state="readonly", width=30)
     combo_homepage['values']= homepage_list
     combo_homepage.set(homepage)
     # PS: nothing need to do when on change event at this time.
@@ -527,7 +585,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
     global txt_dr_name
     global txt_dr_name_value
     txt_dr_name_value = StringVar(frame_group_header, value=dr_name)
-    txt_dr_name = Entry(frame_group_header, width=20, textvariable = txt_dr_name_value)
+    txt_dr_name = Entry(frame_group_header, width=30, textvariable = txt_dr_name_value)
     txt_dr_name.grid(column=1, row=group_row_count, sticky = W)
 
     group_row_count+=1
@@ -540,12 +598,25 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
     global txt_user_id
     global txt_user_id_value
     txt_user_id_value = StringVar(frame_group_header, value=user_id)
-    txt_user_id = Entry(frame_group_header, width=20, textvariable = txt_user_id_value)
+    txt_user_id = Entry(frame_group_header, width=30, textvariable = txt_user_id_value)
     txt_user_id.grid(column=1, row=group_row_count, sticky = W)
 
     group_row_count+=1
 
-    # User Tel
+    # User name
+    global lbl_user_name
+    lbl_user_name = Label(frame_group_header, text=translate[language_code]['user_name'])
+    lbl_user_name.grid(column=0, row=group_row_count, sticky = E)
+
+    global txt_user_name
+    global txt_user_name_value
+    txt_user_name_value = StringVar(frame_group_header, value=user_name)
+    txt_user_name = Entry(frame_group_header, width=30, textvariable = txt_user_name_value)
+    txt_user_name.grid(column=1, row=group_row_count, sticky = W)
+
+    group_row_count+=1
+
+    # User tel
     global lbl_user_tel
     lbl_user_tel = Label(frame_group_header, text=translate[language_code]['user_tel'])
     lbl_user_tel.grid(column=0, row=group_row_count, sticky = E)
@@ -553,8 +624,36 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
     global txt_user_tel
     global txt_user_tel_value
     txt_user_tel_value = StringVar(frame_group_header, value=user_tel)
-    txt_user_tel = Entry(frame_group_header, width=20, textvariable = txt_user_tel_value)
+    txt_user_tel = Entry(frame_group_header, width=30, textvariable = txt_user_tel_value)
     txt_user_tel.grid(column=1, row=group_row_count, sticky = W)
+
+    group_row_count+=1
+
+    # User birthday
+    global lbl_user_birthday
+    lbl_user_birthday = Label(frame_group_header, text=translate[language_code]['user_birthday'])
+    lbl_user_birthday.grid(column=0, row=group_row_count, sticky = E)
+
+    global txt_user_birthday
+    global txt_user_birthday_value
+    txt_user_birthday_value = StringVar(frame_group_header, value=user_birthday)
+    txt_user_birthday = Entry(frame_group_header, width=30, textvariable = txt_user_birthday_value)
+    txt_user_birthday.grid(column=1, row=group_row_count, sticky = W)
+
+    group_row_count+=1
+
+    # Sex Type
+    global lbl_user_sextype
+    lbl_user_sextype = Label(frame_group_header, text=translate[language_code]['user_sextype'])
+    lbl_user_sextype.grid(column=0, row=group_row_count, sticky = E)
+
+    global combo_user_sextype
+    combo_user_sextype = ttk.Combobox(frame_group_header, state="readonly", width=30)
+    combo_user_sextype['values']= sextype_list
+    combo_user_sextype.set(user_sextype)
+    # PS: nothing need to do when on change event at this time.
+    combo_user_sextype.bind("<<ComboboxSelected>>", callbackHomepageOnChange)
+    combo_user_sextype.grid(column=1, row=group_row_count, sticky = W)
 
     group_row_count+=1
 
@@ -564,7 +663,7 @@ def PreferenctTab(root, config_dict, language_code, UI_PADDING_X):
     lbl_visit_time.grid(column=0, row=group_row_count, sticky = E)
 
     global combo_visit_time
-    combo_visit_time = ttk.Combobox(frame_group_header, state="readonly")
+    combo_visit_time = ttk.Combobox(frame_group_header, state="readonly", width=30)
     combo_visit_time['values']= visit_time_list
     combo_visit_time.set(visit_time)
     # PS: nothing need to do when on change event at this time.
@@ -681,9 +780,9 @@ def AdvancedTab(root, config_dict, language_code, UI_PADDING_X):
     lbl_browser.grid(column=0, row=group_row_count, sticky = E)
 
     global combo_browser
-    combo_browser = ttk.Combobox(frame_group_header, state="readonly")
-    combo_browser['values']= ("chrome","firefox","edge","safari")
-    combo_browser.set(config_dict["advanced"]['browser'])
+    combo_browser = ttk.Combobox(frame_group_header, state="readonly", width=30)
+    combo_browser['values']= ("chrome","firefox","edge","safari","brave")
+    combo_browser.set(config_dict['browser'])
     combo_browser.grid(column=1, row=group_row_count, sticky = W)
 
     group_row_count+=1
@@ -693,7 +792,7 @@ def AdvancedTab(root, config_dict, language_code, UI_PADDING_X):
     lbl_language.grid(column=0, row=group_row_count, sticky = E)
 
     global combo_language
-    combo_language = ttk.Combobox(frame_group_header, state="readonly")
+    combo_language = ttk.Combobox(frame_group_header, state="readonly", width=30)
     combo_language['values']= ("English","繁體中文","簡体中文","日本語")
     combo_language.set(config_dict["advanced"]['language'])
     combo_language.bind("<<ComboboxSelected>>", callbackLanguageOnChange)
@@ -706,10 +805,24 @@ def AdvancedTab(root, config_dict, language_code, UI_PADDING_X):
     lbl_webdriver_type.grid(column=0, row=group_row_count, sticky = E)
 
     global combo_webdriver_type
-    combo_webdriver_type = ttk.Combobox(frame_group_header, state="readonly")
+    combo_webdriver_type = ttk.Combobox(frame_group_header, state="readonly", width=30)
     combo_webdriver_type['values']= (CONST_WEBDRIVER_TYPE_SELENIUM, CONST_WEBDRIVER_TYPE_UC)
-    combo_webdriver_type.set(config_dict["advanced"]["webdriver_type"])
+    combo_webdriver_type.set(config_dict["webdriver_type"])
     combo_webdriver_type.grid(column=1, row=group_row_count, sticky = W)
+
+    group_row_count+=1
+
+    global lbl_verbose
+    lbl_verbose = Label(frame_group_header, text=translate[language_code]['verbose'])
+    lbl_verbose.grid(column=0, row=group_row_count, sticky = E)
+
+    global chk_state_verbose
+    chk_state_verbose = BooleanVar()
+    chk_state_verbose.set(config_dict['advanced']["verbose"])
+
+    global chk_verbose
+    chk_verbose = Checkbutton(frame_group_header, text=translate[language_code]['enable'], variable=chk_state_verbose)
+    chk_verbose.grid(column=1, row=group_row_count, sticky = W)
 
     group_row_count+=1
 
@@ -724,7 +837,6 @@ def AdvancedTab(root, config_dict, language_code, UI_PADDING_X):
     global chk_ocr_captcha
     chk_ocr_captcha = Checkbutton(frame_group_header, text=translate[language_code]['enable'], variable=chk_state_ocr_captcha)
     chk_ocr_captcha.grid(column=1, row=group_row_count, sticky = W)
-
 
     frame_group_header.grid(column=0, row=row_count, padx=UI_PADDING_X)
 
