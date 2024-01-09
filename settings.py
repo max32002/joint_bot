@@ -19,7 +19,7 @@ import json
 import webbrowser
 import base64
 
-CONST_APP_VERSION = "MaxRegBot (2023.11.29)"
+CONST_APP_VERSION = "MaxRegBot (2023.12.01)"
 CONST_HOMEPAGE_DEFAULT = "慈濟首頁 http://www.tzuchi.com.tw/zh/"
 
 CONST_OCR_CAPTCH_IMAGE_SOURCE_NON_BROWSER = "NonBrowser"
