@@ -55,7 +55,7 @@ import webbrowser
 
 import chromedriver_autoinstaller
 
-CONST_APP_VERSION = "MaxRegBot (2023.11.29)"
+CONST_APP_VERSION = "MaxRegBot (2023.12.01)"
 
 CONST_CHROME_VERSION_NOT_MATCH_EN="Please download the WebDriver version to match your browser version."
 CONST_CHROME_VERSION_NOT_MATCH_TW="請下載與您瀏覽器相同版本的WebDriver版本，或更新您的瀏覽器版本。"
@@ -174,6 +174,14 @@ def assign_text(driver, by, query, val, overwrite = False, submit=False, overwri
             pass
 
     return is_text_sent
+
+def remove_html_tags(text):
+    ret = ""
+    if not text is None:
+        clean = re.compile('<.*?>')
+        ret = re.sub(clean, '', text)
+        ret = ret.strip()
+    return ret
 
 def get_app_root():
     # 讀取檔案裡的參數值
@@ -890,6 +898,41 @@ def tzuchi_RegNo(driver, config_dict, ocr, Captcha_Browser):
 
     is_form_sumbited = False
     if is_id_sent:
+        is_capcha_fruit_mode = False
+        if ocr_captcha_enable:
+            body_text = ""
+            try:
+                body_tag = driver.find_element(By.CSS_SELECTOR, 'html body')
+                if not body_tag is None:
+                    body_text = body_tag.get_attribute('innerHTML')
+                    body_text = remove_html_tags(body_text)
+                    print("body_text:", body_text)
+            except Exception as exc:
+                body_text = ""
+                pass
+
+            if "西瓜" in body_text and "淇淋" in body_text and "數量" in body_text:
+                is_capcha_fruit_mode = False
+                # need more data to get the answer
+                print("驗證碼格式是～西瓜，霜淇淋")
+                ocr_captcha_enable = False
+
+        #is_capcha_fruit_mode = True
+        #ocr_captcha_enable = False
+        #print("is_capcha_fruit_mode:", is_capcha_fruit_mode)
+        if is_capcha_fruit_mode:
+            try:
+                captcha_tag = driver.find_element(By.CSS_SELECTOR, '#MainContent_tbxVCode')
+                if not captcha_tag is None:
+                    inputed_text = captcha_tag.get_attribute('value')
+                    #print("inputed_text:", inputed_text)
+                    if len(inputed_text) ==  0:
+                        captcha_tag.click()
+                        time.sleep(0.5)
+            except Exception as exc:
+                print(exc)
+                pass
+
         if ocr_captcha_enable:
             ocr_captcha_image_source = CONST_OCR_CAPTCH_IMAGE_SOURCE_CANVAS
             previous_answer = None
