@@ -3,7 +3,7 @@ MaxRegBot是一個免費、開放原始碼的掛號機器人。祝您掛號成�
 
 聽說, 目前這個版本會被檢測出來是機器人, joint_bot 專案的程式碼不會再更新, 未來會改使用 ddddext. 
 
-DDDDEXT YouTube 影片：https://youtu.be/1zGrT7PN7Rs
+DDDDEXT YouTube 影片： https://youtu.be/1vCm3NjVsYY
 
 說明: 
 * 在慈濟只要成功地掛到一次初診, 即使按了取消, 完全沒去看過醫生, 第二次再掛號, 就不算初診, 要選使複診。
